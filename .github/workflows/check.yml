@@ -146,7 +146,9 @@ jobs:
             $cache = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/$plugin/1.0.0"
             if (-not (Test-Path -LiteralPath $cache -PathType Container)) { exit 1 }
             $latest = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/$plugin/latest"
-            if (-not (Test-Path -LiteralPath $latest -PathType Container)) { exit 1 }
+            if (-not (Test-Path -LiteralPath $latest)) { exit 1 }
+            $latestItem = Get-Item -LiteralPath $latest
+            if (-not ($latestItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { exit 1 }
           }
           $helper = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/computer-use/1.0.0/node_modules/@oai/sky/bin/windows/codex-computer-use.exe"
           if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { exit 1 }

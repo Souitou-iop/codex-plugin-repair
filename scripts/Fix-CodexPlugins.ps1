@@ -134,7 +134,7 @@ function Ensure-Marketplace {
     )
 
     $Source = Convert-ToTomlPath $Source
-    $Timestamp = if ($env:CODEX_PLUGIN_REPAIR_TIMESTAMP) { $env:CODEX_PLUGIN_REPAIR_TIMESTAMP } else { "2026-06-04T00:00:00Z" }
+    $Timestamp = if ($env:CODEX_PLUGIN_REPAIR_TIMESTAMP) { $env:CODEX_PLUGIN_REPAIR_TIMESTAMP } else { [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", [System.Globalization.CultureInfo]::InvariantCulture) }
     $Body = "last_updated = `"$Timestamp`"`nsource_type = `"local`"`nsource = `"$Source`"`n"
     $Pattern = "(?ms)(^\[marketplaces\.$([regex]::Escape($Name))\]\r?\n)(.*?)(?=^\[|\z)"
     $Match = [regex]::Match($Text, $Pattern)

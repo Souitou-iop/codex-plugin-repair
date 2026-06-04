@@ -22,10 +22,15 @@ import platform
 import re
 import shutil
 import sys
+from datetime import datetime, timezone
 
 codex_home = pathlib.Path(sys.argv[1]).expanduser()
 config_path = pathlib.Path(sys.argv[2]).expanduser()
 text = config_path.read_text()
+repair_timestamp = os.environ.get(
+    "CODEX_PLUGIN_REPAIR_TIMESTAMP",
+    datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+)
 
 def table_exists(kind, name):
     return re.search(rf'^\[{re.escape(kind)}\.{re.escape(name)}\]\s*$', text, re.M) is not None
@@ -60,7 +65,7 @@ def set_plugin_enabled(src, plugin_id, enabled=True):
 def ensure_marketplace(src, name, source):
     block_re = re.compile(rf'(^\[marketplaces\.{re.escape(name)}\]\n)(.*?)(?=^\[|\Z)', re.M | re.S)
     m = block_re.search(src)
-    body = f'last_updated = "{os.environ.get("CODEX_PLUGIN_REPAIR_TIMESTAMP", "2026-06-04T00:00:00Z")}"\nsource_type = "local"\nsource = "{source}"\n'
+    body = f'last_updated = "{repair_timestamp}"\nsource_type = "local"\nsource = "{source}"\n'
     if m:
         old = m.group(2)
         old = re.sub(r'^last_updated\s*=.*$', body.splitlines()[0], old, flags=re.M) if re.search(r'^last_updated\s*=', old, re.M) else body.splitlines()[0] + "\n" + old

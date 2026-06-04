@@ -3,44 +3,15 @@
 [![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
 [![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
 
-这是一个用于修复 Codex 插件状态异常的小脚本。
+修复 Codex Desktop 更新、重启后出现的本地插件状态异常，重点覆盖 **Computer Use**、**Chrome**、**Browser** 这些 bundled 插件。
 
-主要适用于 macOS 和 Windows Codex Desktop 更新或重启后，**Computer Use**、**Chrome** 等 bundled 插件消失、反复要求重新安装、MCP 没挂上、Chrome native host 配置不稳定。Linux 下脚本会以 CLI-only 模式运行，只修复已经启用插件的 marketplace/cache 一致性，不会强行启用 Desktop 专属插件。
+> 非官方社区修复脚本，不是 OpenAI 官方工具。脚本会先备份 `~/.codex/config.toml`，再修改配置和插件缓存。
 
-> 这是非官方社区临时修复方案，不是 OpenAI 官方工具。
+## 先运行哪条命令
 
-## 它会修复什么
+推荐先 clone 仓库，方便检查脚本内容。
 
-脚本会修复本机 Codex 插件状态：
-
-- 先备份 `~/.codex/config.toml`
-- 确保 `browser@openai-bundled`、`chrome@openai-bundled`、`computer-use@openai-bundled` 都是 `enabled=true`
-- 确保 `config.toml` 里有 bundled / curated marketplace
-- 把已启用插件从 marketplace source 复制到持久 cache：`~/.codex/plugins/cache/...`
-- 刷新 bundled 插件的 `latest` 软链接
-- Windows 下，如果能找到 Codex Desktop AppX 源，会从 AppX 重建 bundled marketplace
-- Windows 下，会重建残缺的 bundled 插件缓存，并修正 Computer Use 的 `notify` 辅助程序路径
-- 检查所有 `enabled=true` 插件是否同时具备 marketplace 和 cache
-
-它不会启用随机插件，不会删除浏览器 Profile，不会修改 Chrome/Edge 用户数据，也不会把扩展强行装进浏览器 Profile。
-
-## 平台说明
-
-- **macOS：** 完整修复模式。bash 脚本会启用并修复 bundled 的 `browser`、`chrome`、`computer-use` 插件。
-- **Windows：** 通过 PowerShell 脚本进入完整修复模式。Codex Desktop 和 Computer Use 支持 Windows，所以同类插件状态问题在 Windows 上也有意义。
-- **Linux：** CLI-only 修复模式。Codex CLI 支持 Linux，但 Codex Desktop 和 Computer Use 不是 Linux Desktop 功能。脚本不会强行启用 `chrome` 或 `computer-use`，只会在 marketplace source 存在时修复 `config.toml` 里已经启用的插件。
-
-## 快速使用
-
-macOS 或 Linux：
-
-```bash
-git clone https://github.com/Souitou-iop/codex-plugin-repair.git
-cd codex-plugin-repair
-./scripts/fix-codex-plugins.sh
-```
-
-Windows PowerShell：
+### Windows
 
 ```powershell
 git clone https://github.com/Souitou-iop/codex-plugin-repair.git
@@ -48,58 +19,154 @@ cd codex-plugin-repair
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
-如果你的 Windows 安装不是标准 AppX 包，可以手动指定 bundled 源目录：
+执行后完全退出并重新打开 Codex Desktop。
+
+如果不是标准 AppX 安装，可以手动指定 bundled 源目录：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-执行完成后，重启 Codex Desktop。
+### macOS
 
-Linux 下执行完成后，重开 shell 或启动新的 Codex CLI 会话。
+```bash
+git clone https://github.com/Souitou-iop/codex-plugin-repair.git
+cd codex-plugin-repair
+./scripts/fix-codex-plugins.sh
+```
+
+执行后重启 Codex Desktop。
+
+### Linux
+
+```bash
+git clone https://github.com/Souitou-iop/codex-plugin-repair.git
+cd codex-plugin-repair
+./scripts/fix-codex-plugins.sh
+```
+
+Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 CLI-only 修复：修复已经启用插件的 marketplace/cache 一致性，不会强行启用 Desktop 专属插件。
 
 ## 一行命令
 
-使用前建议先阅读脚本内容：
+急用时可以直接执行。更稳妥的方式仍然是先 clone 后阅读脚本。
+
+macOS / Linux：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.2/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/fix-codex-plugins.sh)
 ```
 
 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.2/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
-## 验证
+## 什么时候该用
 
-执行后运行：
+适合这些情况：
+
+- Codex Desktop 里 Computer Use 不可用或消失
+- Chrome 插件反复提示重新安装
+- `codex mcp list` 看不到 `computer-use`
+- Chrome native host 指向临时目录或旧插件路径
+- Windows 日志里出现 `helper paths are unavailable` 或 `not_in_bundled_marketplace_plugin_names`
+- `~/.codex/plugins/cache/...` 缺少已启用插件
+- `~/.codex/config.toml` 缺少 bundled / curated marketplace
+
+不适合这些情况：
+
+- 账号、模型、灰度权限导致工具不可见
+- 浏览器扩展本身没有安装或被浏览器禁用
+- 公司安全策略阻止 native helper 或 named pipe
+- Codex Desktop 安装包本身损坏，且没有可用 bundled 源目录
+
+## 脚本会改什么
+
+| 平台 | 行为 |
+| --- | --- |
+| Windows | 启用 `browser` / `chrome` / `computer-use`，从 AppX 源重建 bundled marketplace，重建残缺 cache，刷新 `latest` junction，修正 Computer Use `notify` helper 路径。 |
+| macOS | 启用 `browser` / `chrome` / `computer-use`，修复 bundled / curated marketplace 和持久 cache，刷新 bundled 插件 `latest` 软链接。 |
+| Linux | 不强行启用 Desktop 插件，只修复当前配置里已经 `enabled=true` 的插件 marketplace/cache。 |
+
+脚本不会：
+
+- 删除 Chrome / Edge 用户数据
+- 修改浏览器 Profile
+- 强行安装浏览器扩展
+- 启用随机插件
+- 删除当前有效的 `config.toml`
+
+## 怎么验证
+
+通用检查：
 
 ```bash
 codex mcp list
 ```
 
-如果 Computer Use 已启用，应该能看到 `computer-use`。
+如果 Computer Use 已启用，应能看到 `computer-use`。
 
-macOS 下检查 Chrome native host：
+macOS Chrome native host：
 
 ```bash
 /Applications/Codex.app/Contents/Resources/node \
   ~/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/check-native-host-manifest.js
 ```
 
-期望结果是 `Correct: yes`。
+期望看到：
 
-## 相关上游问题
+```text
+Correct: yes
+```
 
-这些 issue 描述了类似的插件持久化和 bundled marketplace 问题：
+Windows Computer Use named pipe：
+
+```powershell
+Get-ChildItem -Path "\\.\pipe\" | Where-Object { $_.Name -like "codex-computer-use-*" }
+```
+
+Windows Codex Desktop 日志关键词：
+
+```powershell
+$logRoot = "$env:LOCALAPPDATA\Packages\OpenAI.Codex_2p2nqsd0c76g0\LocalCache\Local\Codex\Logs"
+Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1 |
+  Select-String -Pattern "computer-use native pipe startup ready|helper paths are unavailable|not_in_bundled_marketplace_plugin_names"
+```
+
+## 失败时看哪里
+
+脚本末尾会输出每个已启用插件的一致性检查：
+
+```text
+OK chrome@openai-bundled marketplace=True cache=True source=True
+MISSING example@marketplace marketplace=True cache=False source=False
+```
+
+重点看这三项：
+
+- `marketplace=false`：`config.toml` 缺少对应 marketplace。
+- `cache=false`：持久 cache 缺失。
+- `source=false`：marketplace 源目录里找不到该插件，脚本无法复制。
+
+如果 Windows 上 Chrome 仍无法连接，先在 Codex Desktop 里重新走一次 Chrome 插件安装流程，让 Windows native messaging 注册刷新。
+
+## 回滚
+
+脚本每次运行都会备份配置文件，路径类似：
+
+```text
+~/.codex/config.toml.bak-plugin-repair-YYYYMMDDHHMMSS
+```
+
+Windows 下重建 bundled marketplace 或残缺 cache 时，也会给旧目录添加 `.bak-plugin-repair-...` 备份后缀。需要回退时，关闭 Codex Desktop，再把对应备份恢复到原路径。
+
+## 相关问题
 
 - https://github.com/openai/codex/issues/25813
 - https://github.com/openai/codex/issues/25809
 - https://github.com/openai/codex/issues/21936
 - https://github.com/openai/codex/issues/21579
-
-## 英文说明
-
-English documentation: [README.md](./README.md).
