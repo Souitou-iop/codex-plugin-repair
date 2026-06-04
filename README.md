@@ -1,5 +1,8 @@
 # Codex Plugin Repair
 
+[![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
+[![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
+
 A small recovery script for Codex Desktop plugin state issues on macOS.
 
 It is intended for cases where Codex updates or restarts cause bundled plugins such as **Computer Use** or **Chrome** to disappear, reinstall repeatedly, or stop attaching their MCP/native-host integration.

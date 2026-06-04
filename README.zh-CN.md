@@ -1,5 +1,8 @@
 # Codex 插件修复脚本
 
+[![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
+[![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
+
 这是一个用于修复 macOS 上 Codex Desktop 插件状态异常的小脚本。
 
 适用场景包括：Codex 更新或重启后，**Computer Use**、**Chrome** 等 bundled 插件消失、反复要求重新安装、MCP 没挂上、Chrome native host 配置不稳定。
