@@ -2,7 +2,7 @@
 
 ## 1. 适用症状
 
-当 macOS 上的 Codex Desktop 出现以下情况时，可以使用这个脚本：
+当 macOS 或 Windows 上的 Codex Desktop 出现以下情况时，可以使用这个脚本：
 
 - Computer Use 重启后消失
 - Chrome 插件反复要求重新安装
@@ -14,10 +14,20 @@ Linux 下只能把这个脚本用于 Codex CLI 插件 marketplace/cache 一致�
 
 ## 2. 执行修复
 
+macOS 或 Linux：
+
 ```bash
 git clone https://github.com/Souitou-iop/codex-plugin-repair.git
 cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
+```
+
+Windows PowerShell：
+
+```powershell
+git clone https://github.com/Souitou-iop/codex-plugin-repair.git
+cd codex-plugin-repair
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
 脚本会先给 `~/.codex/config.toml` 创建带时间戳的备份，再进行修改。
@@ -52,6 +62,8 @@ codex mcp list
 ```text
 Correct: yes
 ```
+
+Windows 下脚本主要修复 Codex 插件 config/cache 状态。如果 Chrome 仍然连不上，重新在 Codex Desktop 里走一遍 Chrome 插件安装流程，让 Windows native messaging 注册刷新。
 
 ## 6. 如果仍然失败
 

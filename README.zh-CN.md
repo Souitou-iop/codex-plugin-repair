@@ -5,7 +5,7 @@
 
 这是一个用于修复 Codex 插件状态异常的小脚本。
 
-主要适用于 macOS Codex Desktop 更新或重启后，**Computer Use**、**Chrome** 等 bundled 插件消失、反复要求重新安装、MCP 没挂上、Chrome native host 配置不稳定。Linux 下脚本会以 CLI-only 模式运行，只修复已经启用插件的 marketplace/cache 一致性，不会强行启用 Desktop 专属插件。
+主要适用于 macOS 和 Windows Codex Desktop 更新或重启后，**Computer Use**、**Chrome** 等 bundled 插件消失、反复要求重新安装、MCP 没挂上、Chrome native host 配置不稳定。Linux 下脚本会以 CLI-only 模式运行，只修复已经启用插件的 marketplace/cache 一致性，不会强行启用 Desktop 专属插件。
 
 > 这是非官方社区临时修复方案，不是 OpenAI 官方工具。
 
@@ -24,16 +24,26 @@
 
 ## 平台说明
 
-- **macOS：** 完整修复模式。脚本会启用并修复 bundled 的 `browser`、`chrome`、`computer-use` 插件。
+- **macOS：** 完整修复模式。bash 脚本会启用并修复 bundled 的 `browser`、`chrome`、`computer-use` 插件。
+- **Windows：** 通过 PowerShell 脚本进入完整修复模式。Codex Desktop 和 Computer Use 支持 Windows，所以同类插件状态问题在 Windows 上也有意义。
 - **Linux：** CLI-only 修复模式。Codex CLI 支持 Linux，但 Codex Desktop 和 Computer Use 不是 Linux Desktop 功能。脚本不会强行启用 `chrome` 或 `computer-use`，只会在 marketplace source 存在时修复 `config.toml` 里已经启用的插件。
-- **Windows：** 暂时不是这个脚本的目标平台。
 
 ## 快速使用
+
+macOS 或 Linux：
 
 ```bash
 git clone https://github.com/Souitou-iop/codex-plugin-repair.git
 cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
+```
+
+Windows PowerShell：
+
+```powershell
+git clone https://github.com/Souitou-iop/codex-plugin-repair.git
+cd codex-plugin-repair
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
 执行完成后，重启 Codex Desktop。
@@ -45,7 +55,13 @@ Linux 下执行完成后，重开 shell 或启动新的 Codex CLI 会话。
 使用前建议先阅读脚本内容：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.2.0/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/fix-codex-plugins.sh)
+```
+
+Windows PowerShell：
+
+```powershell
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 ## 验证

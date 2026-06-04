@@ -5,7 +5,7 @@
 
 A small recovery script for Codex plugin state issues.
 
-It is mainly intended for macOS Codex Desktop cases where updates or restarts cause bundled plugins such as **Computer Use** or **Chrome** to disappear, reinstall repeatedly, or stop attaching their MCP/native-host integration. On Linux, it runs in CLI-only mode and repairs already-enabled plugin marketplace/cache consistency without enabling Desktop-only plugins.
+It is mainly intended for macOS and Windows Codex Desktop cases where updates or restarts cause bundled plugins such as **Computer Use** or **Chrome** to disappear, reinstall repeatedly, or stop attaching their MCP/native-host integration. On Linux, it runs in CLI-only mode and repairs already-enabled plugin marketplace/cache consistency without enabling Desktop-only plugins.
 
 > This is an unofficial community workaround. It is not maintained by OpenAI.
 
@@ -24,16 +24,26 @@ It does **not** enable random plugins, delete browser profiles, edit Chrome/Edge
 
 ## Platform Notes
 
-- **macOS:** full repair mode. The script enables and repairs the bundled `browser`, `chrome`, and `computer-use` plugins.
+- **macOS:** full repair mode. The bash script enables and repairs the bundled `browser`, `chrome`, and `computer-use` plugins.
+- **Windows:** full repair mode through the PowerShell script. Codex Desktop and Computer Use are available on Windows, so the same plugin-state class can matter there.
 - **Linux:** CLI-only repair mode. Codex CLI is available on Linux, but Codex Desktop and Computer Use are not Linux Desktop features. The script does not force-enable `chrome` or `computer-use`; it only repairs plugins already enabled in `config.toml` when their marketplace source is available.
-- **Windows:** not the target of this script yet.
 
 ## Quick Start
+
+macOS or Linux:
 
 ```bash
 git clone https://github.com/Souitou-iop/codex-plugin-repair.git
 cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
+```
+
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/Souitou-iop/codex-plugin-repair.git
+cd codex-plugin-repair
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
 Restart Codex Desktop after running the script.
@@ -45,7 +55,13 @@ On Linux, restart your shell session or start a new Codex CLI session after runn
 Review the script before using this form:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.2.0/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/fix-codex-plugins.sh)
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 ## Verify

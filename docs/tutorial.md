@@ -2,7 +2,7 @@
 
 ## 1. Symptoms
 
-Use this script when Codex Desktop on macOS shows one or more of these symptoms:
+Use this script when Codex Desktop on macOS or Windows shows one or more of these symptoms:
 
 - Computer Use disappears after restart
 - Chrome plugin asks to reinstall repeatedly
@@ -14,10 +14,20 @@ On Linux, use the same script only for Codex CLI plugin marketplace/cache consis
 
 ## 2. Run the Repair
 
+macOS or Linux:
+
 ```bash
 git clone https://github.com/Souitou-iop/codex-plugin-repair.git
 cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
+```
+
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/Souitou-iop/codex-plugin-repair.git
+cd codex-plugin-repair
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
 The script creates a timestamped backup of `~/.codex/config.toml` before editing.
@@ -52,6 +62,8 @@ Expected:
 ```text
 Correct: yes
 ```
+
+On Windows, the script focuses on repairing Codex plugin config/cache state. If Chrome still cannot connect, rerun the Chrome plugin setup flow from Codex Desktop so Windows native messaging registration is refreshed.
 
 ## 6. What To Do If It Still Fails
 
