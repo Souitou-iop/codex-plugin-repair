@@ -17,7 +17,7 @@ jobs:
           - os: macos-latest
             platform: Darwin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Syntax check
         run: bash -n scripts/fix-codex-plugins.sh
@@ -74,7 +74,7 @@ jobs:
     name: PowerShell script (Windows)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Parse PowerShell script
         shell: pwsh
