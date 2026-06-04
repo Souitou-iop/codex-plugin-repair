@@ -10,6 +10,8 @@
 - Chrome native host manifest 存在，但指向不稳定的插件路径
 - bundled 插件只在 `.tmp` 里存在，但持久 cache 里缺失
 
+Linux 下只能把这个脚本用于 Codex CLI 插件 marketplace/cache 一致性检查。Linux 没有同款 Codex Desktop + Computer Use 故障模式。
+
 ## 2. 执行修复
 
 ```bash
@@ -24,6 +26,8 @@ cd codex-plugin-repair
 
 执行完成后，退出并重新打开 Codex Desktop，让桌面端重新加载插件配置。
 
+Linux 下执行完成后，启动新的 Codex CLI 会话即可。
+
 ## 4. 验证 MCP 状态
 
 ```bash
@@ -36,7 +40,7 @@ codex mcp list
 - `node_repl` 仍然正常启用
 - 不再出现配置解析错误
 
-## 5. 验证 Chrome Native Host
+## 5. 在 macOS 下验证 Chrome Native Host
 
 ```bash
 /Applications/Codex.app/Contents/Resources/node \

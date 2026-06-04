@@ -10,6 +10,8 @@ Use this script when Codex Desktop on macOS shows one or more of these symptoms:
 - Chrome native host manifest exists but points at unstable plugin paths
 - bundled plugins are present under `.tmp` but missing from persistent cache
 
+On Linux, use the same script only for Codex CLI plugin marketplace/cache consistency checks. Linux does not have the same Codex Desktop + Computer Use failure mode.
+
 ## 2. Run the Repair
 
 ```bash
@@ -24,6 +26,8 @@ The script creates a timestamped backup of `~/.codex/config.toml` before editing
 
 Quit and reopen Codex Desktop so the app reloads plugin configuration.
 
+On Linux, start a new Codex CLI session instead.
+
 ## 4. Verify MCP State
 
 ```bash
@@ -36,7 +40,7 @@ Expected:
 - `node_repl` remains enabled
 - no config parsing error appears
 
-## 5. Verify Chrome Native Host
+## 5. Verify Chrome Native Host On macOS
 
 ```bash
 /Applications/Codex.app/Contents/Resources/node \

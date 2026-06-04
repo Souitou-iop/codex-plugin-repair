@@ -18,6 +18,7 @@ python3 - "$CODEX_HOME" "$CONFIG" <<'PY'
 import json
 import os
 import pathlib
+import platform
 import re
 import shutil
 import sys
@@ -85,6 +86,8 @@ def get_marketplace_source(src, name, default):
 
 # Current Codex CLI rejects service_tier = "default"; this can prevent all plugin config from loading.
 text = re.sub(r'^service_tier\s*=\s*"default"\s*$', 'service_tier = "fast"', text, flags=re.M)
+detected_platform = os.environ.get("CODEX_PLUGIN_REPAIR_PLATFORM", platform.system())
+system_name = detected_platform.lower()
 
 bundled_source = str(codex_home / ".tmp" / "bundled-marketplaces" / "openai-bundled")
 curated_source = str(codex_home / ".tmp" / "plugins")
@@ -102,12 +105,15 @@ if pathlib.Path(curated_source, ".agents", "plugins", "marketplace.json").exists
 if pathlib.Path(primary_runtime_source, ".agents", "plugins", "marketplace.json").exists():
     text = ensure_marketplace(text, "openai-primary-runtime", primary_runtime_source)
 
-for plugin_id in (
-    "browser@openai-bundled",
-    "chrome@openai-bundled",
-    "computer-use@openai-bundled",
-):
-    text = set_plugin_enabled(text, plugin_id, True)
+if system_name == "darwin":
+    for plugin_id in (
+        "browser@openai-bundled",
+        "chrome@openai-bundled",
+        "computer-use@openai-bundled",
+    ):
+        text = set_plugin_enabled(text, plugin_id, True)
+else:
+    print(f"Platform detected: {detected_platform}. Skipping macOS Desktop bundled plugin auto-enable.")
 
 config_path.write_text(text)
 
@@ -168,9 +174,6 @@ def copy_plugin(marketplace, plugin_name):
     dst_base.mkdir(parents=True, exist_ok=True)
     if dst.exists():
         print(f"Cache exists for {plugin_name}@{marketplace}: {dst}")
-    elif existing:
-        print(f"Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
-        dst = existing[-1]
     else:
         shutil.copytree(src, dst, symlinks=True)
         print(f"Copied {plugin_name}@{marketplace} -> {dst}")
@@ -215,4 +218,15 @@ PY
 
 echo
 echo "Repair complete."
-echo "If Codex Desktop is open, restart it once so it reloads config.toml."
+PLATFORM_NAME="${CODEX_PLUGIN_REPAIR_PLATFORM:-$(uname -s)}"
+case "$PLATFORM_NAME" in
+  Darwin)
+    echo "If Codex Desktop is open, restart it once so it reloads config.toml."
+    ;;
+  Linux)
+    echo "Start a new Codex CLI session so it reloads config.toml."
+    ;;
+  *)
+    echo "Restart Codex or start a new Codex session so it reloads config.toml."
+    ;;
+esac

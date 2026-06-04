@@ -3,9 +3,9 @@
 [![English](https://img.shields.io/badge/Language-English-blue)](./README.md)
 [![简体中文](https://img.shields.io/badge/语言-简体中文-green)](./README.zh-CN.md)
 
-A small recovery script for Codex Desktop plugin state issues on macOS.
+A small recovery script for Codex plugin state issues.
 
-It is intended for cases where Codex updates or restarts cause bundled plugins such as **Computer Use** or **Chrome** to disappear, reinstall repeatedly, or stop attaching their MCP/native-host integration.
+It is mainly intended for macOS Codex Desktop cases where updates or restarts cause bundled plugins such as **Computer Use** or **Chrome** to disappear, reinstall repeatedly, or stop attaching their MCP/native-host integration. On Linux, it runs in CLI-only mode and repairs already-enabled plugin marketplace/cache consistency without enabling Desktop-only plugins.
 
 > This is an unofficial community workaround. It is not maintained by OpenAI.
 
@@ -22,6 +22,12 @@ The script repairs the local Codex plugin state by:
 
 It does **not** enable random plugins, delete browser profiles, edit Chrome/Edge user data, or install browser extensions into your profile.
 
+## Platform Notes
+
+- **macOS:** full repair mode. The script enables and repairs the bundled `browser`, `chrome`, and `computer-use` plugins.
+- **Linux:** CLI-only repair mode. Codex CLI is available on Linux, but Codex Desktop and Computer Use are not Linux Desktop features. The script does not force-enable `chrome` or `computer-use`; it only repairs plugins already enabled in `config.toml` when their marketplace source is available.
+- **Windows:** not the target of this script yet.
+
 ## Quick Start
 
 ```bash
@@ -32,12 +38,14 @@ cd codex-plugin-repair
 
 Restart Codex Desktop after running the script.
 
+On Linux, restart your shell session or start a new Codex CLI session after running the script.
+
 ## One-Line Usage
 
 Review the script before using this form:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/main/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.2.0/scripts/fix-codex-plugins.sh)
 ```
 
 ## Verify
@@ -50,7 +58,7 @@ codex mcp list
 
 You should see `computer-use` listed when the Computer Use plugin is enabled.
 
-For Chrome native host state:
+For Chrome native host state on macOS:
 
 ```bash
 /Applications/Codex.app/Contents/Resources/node \
