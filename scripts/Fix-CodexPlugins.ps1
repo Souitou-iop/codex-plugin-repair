@@ -1,5 +1,7 @@
 param(
-    [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" })
+    [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }),
+    [string]$PackageName = "OpenAI.Codex",
+    [string]$BundledSourceRoot = $(if ($env:CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT) { $env:CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT } else { "" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +37,65 @@ function Get-DetectedPlatform {
         return "Linux"
     }
     return "Unknown"
+}
+
+function Get-WindowsBundledSourceRoot {
+    param(
+        [string]$PackageName,
+        [string]$SourceOverride
+    )
+
+    if ($SourceOverride) {
+        if (Test-Path -LiteralPath $SourceOverride -PathType Container) {
+            return (Resolve-Path -LiteralPath $SourceOverride).Path
+        }
+        Write-Host "Windows bundled source override missing: $SourceOverride"
+        return $null
+    }
+
+    if (-not (Get-Command Get-AppxPackage -ErrorAction SilentlyContinue)) {
+        Write-Host "Get-AppxPackage is unavailable; keeping existing bundled marketplace source."
+        return $null
+    }
+
+    $Package = Get-AppxPackage -Name $PackageName | Sort-Object Version -Descending | Select-Object -First 1
+    if (-not $Package) {
+        Write-Host "Could not find AppX package: $PackageName"
+        return $null
+    }
+
+    $Source = Join-Path $Package.InstallLocation "app/resources/plugins/openai-bundled"
+    if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
+        Write-Host "Could not find bundled plugin source: $Source"
+        return $null
+    }
+
+    return $Source
+}
+
+function Sync-WindowsBundledMarketplace {
+    param(
+        [string]$Source,
+        [string]$Destination
+    )
+
+    if (-not $Source) {
+        return $false
+    }
+
+    $Parent = Split-Path -Path $Destination -Parent
+    New-Item -ItemType Directory -Path $Parent -Force | Out-Null
+    if (Test-Path -LiteralPath $Destination) {
+        $BackupPath = "$Destination.bak-plugin-repair-$Stamp"
+        Move-Item -LiteralPath $Destination -Destination $BackupPath -Force
+        Write-Host "Backed up bundled marketplace to: $BackupPath"
+    }
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $Destination -Recurse -Force
+    }
+    Write-Host "Synced Windows bundled marketplace: $Source -> $Destination"
+    return $true
 }
 
 function Set-PluginEnabled {
@@ -140,7 +201,7 @@ function Get-CachedPluginDirs {
         return @()
     }
     return @(Get-ChildItem -LiteralPath $Base -Directory | Where-Object {
-        $_.Name -ne "latest" -and -not ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -and
+        $_.Name -ne "latest" -and $_.Name -notlike "*.bak-plugin-repair-*" -and -not ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -and
             (Test-Path -LiteralPath (Join-Path $_.FullName ".codex-plugin/plugin.json") -PathType Leaf)
     } | Sort-Object FullName)
 }
@@ -157,6 +218,40 @@ function Update-LatestLink {
     }
     New-Item -ItemType Junction -Path $Latest -Target $Target | Out-Null
     Write-Host "Updated latest link: $Latest -> $Target"
+}
+
+function Test-PluginCacheReady {
+    param(
+        [string]$PluginName,
+        [string]$PluginRoot,
+        [string]$PlatformName
+    )
+
+    $Required = @((Join-Path $PluginRoot ".codex-plugin/plugin.json"))
+    if ($PlatformName -eq "windows") {
+        switch ($PluginName) {
+            "browser" {
+                $Required += (Join-Path $PluginRoot "scripts/browser-client.mjs")
+            }
+            "chrome" {
+                $Required += (Join-Path $PluginRoot "scripts/browser-client.mjs")
+                $Required += (Join-Path $PluginRoot "extension-host/windows/x64/extension-host.exe")
+            }
+            "computer-use" {
+                $Required += (Join-Path $PluginRoot "scripts/computer-use-client.mjs")
+                $Required += (Join-Path $PluginRoot "node_modules/@oai/sky/bin/windows/codex-computer-use.exe")
+            }
+        }
+    }
+
+    $Missing = @($Required | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+    if ($Missing.Count -gt 0) {
+        foreach ($MissingFile in $Missing) {
+            Write-Host "Missing cache file for ${PluginName}: $MissingFile"
+        }
+        return $false
+    }
+    return $true
 }
 
 function Copy-Plugin {
@@ -206,7 +301,15 @@ function Copy-Plugin {
     $Dest = Join-Path $DestBase $Version
     New-Item -ItemType Directory -Path $DestBase -Force | Out-Null
     if (Test-Path -LiteralPath $Dest -PathType Container) {
-        Write-Host "Cache exists for ${PluginName}@${Marketplace}: $Dest"
+        if (Test-PluginCacheReady -PluginName $PluginName -PluginRoot $Dest -PlatformName $SystemName) {
+            Write-Host "Cache exists for ${PluginName}@${Marketplace}: $Dest"
+        } else {
+            $BackupDest = "$Dest.bak-plugin-repair-$Stamp"
+            Move-Item -LiteralPath $Dest -Destination $BackupDest -Force
+            Write-Host "Backed up incomplete cache for ${PluginName}@${Marketplace}: $BackupDest"
+            Copy-Item -LiteralPath $Source -Destination $Dest -Recurse
+            Write-Host "Rebuilt ${PluginName}@${Marketplace} -> $Dest"
+        }
     } else {
         Copy-Item -LiteralPath $Source -Destination $Dest -Recurse
         Write-Host "Copied ${PluginName}@${Marketplace} -> $Dest"
@@ -231,6 +334,25 @@ function Get-EnabledPlugins {
     }
 }
 
+function Set-NotifyHelper {
+    param(
+        [string]$Text,
+        [string]$HelperPath
+    )
+
+    $EscapedHelperPath = $HelperPath.Replace("'", "''")
+    $NotifyLine = "notify = [ '$EscapedHelperPath', 'turn-ended' ]"
+    if ($Text -match "(?m)^notify\s*=") {
+        return [regex]::Replace($Text, "(?m)^notify\s*=.*$", $NotifyLine)
+    }
+
+    if ($Text -match "(?m)^sandbox_mode\s*=") {
+        return [regex]::Replace($Text, "(?m)^(sandbox_mode\s*=.*)$", "`$1`n$NotifyLine")
+    }
+
+    return $NotifyLine + "`n" + $Text
+}
+
 $Text = Get-Content -LiteralPath $Config -Raw
 $Text = [regex]::Replace($Text, '(?m)^service_tier\s*=\s*"default"\s*$', 'service_tier = "fast"')
 
@@ -239,6 +361,11 @@ $SystemName = $DetectedPlatform.ToLowerInvariant()
 $BundledSource = Join-Path $CodexHome ".tmp/bundled-marketplaces/openai-bundled"
 $CuratedSource = Join-Path $CodexHome ".tmp/plugins"
 $PrimaryRuntimeSource = Join-Path $HOME ".cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
+
+if ($SystemName -eq "windows") {
+    $WindowsBundledSource = Get-WindowsBundledSourceRoot -PackageName $PackageName -SourceOverride $BundledSourceRoot
+    Sync-WindowsBundledMarketplace -Source $WindowsBundledSource -Destination $BundledSource | Out-Null
+}
 
 $KnownMarketplaces = @{
     "openai-bundled" = $BundledSource
@@ -266,6 +393,25 @@ Set-Content -LiteralPath $Config -Value $Text -NoNewline
 
 foreach ($Plugin in Get-EnabledPlugins (Get-Content -LiteralPath $Config -Raw)) {
     Copy-Plugin -Marketplace $Plugin.Marketplace -PluginName $Plugin.Name -KnownMarketplaces $KnownMarketplaces | Out-Null
+}
+
+if ($SystemName -eq "windows") {
+    $ComputerUseCacheBase = Join-Path $CodexHome "plugins/cache/openai-bundled/computer-use"
+    $ComputerUseCaches = Get-CachedPluginDirs $ComputerUseCacheBase
+    if ($ComputerUseCaches.Count -gt 0) {
+        $ComputerUseRoot = $ComputerUseCaches[-1].FullName
+        $HelperPath = Join-Path $ComputerUseRoot "node_modules/@oai/sky/bin/windows/codex-computer-use.exe"
+        if (Test-Path -LiteralPath $HelperPath -PathType Leaf) {
+            $Text = Get-Content -LiteralPath $Config -Raw
+            $Text = Set-NotifyHelper -Text $Text -HelperPath $HelperPath
+            Set-Content -LiteralPath $Config -Value $Text -NoNewline
+            Write-Host "Updated notify helper path: $HelperPath"
+        } else {
+            Write-Host "Skip notify update: Computer Use helper missing: $HelperPath"
+        }
+    } else {
+        Write-Host "Skip notify update: Computer Use cache missing"
+    }
 }
 
 Write-Host ""

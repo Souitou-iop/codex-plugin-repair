@@ -18,6 +18,8 @@ The script repairs the local Codex plugin state by:
 - ensuring the bundled and curated marketplaces exist in `config.toml`
 - copying enabled plugins from their marketplace source into persistent `~/.codex/plugins/cache/...`
 - refreshing `latest` symlinks for bundled plugins
+- on Windows, rebuilding the bundled marketplace from the Codex Desktop AppX source when available
+- on Windows, rebuilding incomplete bundled plugin cache directories and updating the Computer Use `notify` helper path
 - checking every `enabled=true` plugin for both marketplace and cache presence
 
 It does **not** enable random plugins, delete browser profiles, edit Chrome/Edge user data, or install browser extensions into your profile.
@@ -46,6 +48,12 @@ cd codex-plugin-repair
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
+If your Windows install is not the normal AppX package, pass the bundled source manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
+```
+
 Restart Codex Desktop after running the script.
 
 On Linux, restart your shell session or start a new Codex CLI session after running the script.
@@ -55,13 +63,13 @@ On Linux, restart your shell session or start a new Codex CLI session after runn
 Review the script before using this form:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.2/scripts/fix-codex-plugins.sh)
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.2/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 ## Verify

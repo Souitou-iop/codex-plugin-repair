@@ -100,10 +100,25 @@ jobs:
           '@ | Set-Content -LiteralPath (Join-Path $CodexHome "config.toml") -NoNewline
 
           foreach ($plugin in @("browser", "chrome", "computer-use")) {
-            $root = Join-Path $CodexHome ".tmp/bundled-marketplaces/openai-bundled/plugins/$plugin"
+            $root = Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/$plugin"
             New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
             "{`"name`":`"$plugin`",`"version`":`"1.0.0`"}" | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
           }
+
+          New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/browser/scripts") -Force | Out-Null
+          "" | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/browser/scripts/browser-client.mjs") -NoNewline
+          New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/chrome/scripts") -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/chrome/extension-host/windows/x64") -Force | Out-Null
+          "" | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/chrome/scripts/browser-client.mjs") -NoNewline
+          "" | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/chrome/extension-host/windows/x64/extension-host.exe") -NoNewline
+          New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/computer-use/scripts") -Force | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/computer-use/node_modules/@oai/sky/bin/windows") -Force | Out-Null
+          "" | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/computer-use/scripts/computer-use-client.mjs") -NoNewline
+          "" | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/computer-use/node_modules/@oai/sky/bin/windows/codex-computer-use.exe") -NoNewline
+
+          $staleCache = Join-Path $CodexHome "plugins/cache/openai-bundled/computer-use/1.0.0/.codex-plugin"
+          New-Item -ItemType Directory -Path $staleCache -Force | Out-Null
+          '{"name":"computer-use","version":"1.0.0"}' | Set-Content -LiteralPath (Join-Path $staleCache "plugin.json") -NoNewline
 
           New-Item -ItemType Directory -Path (Join-Path $CodexHome ".tmp/plugins/.agents/plugins") -Force | Out-Null
           "{}" | Set-Content -LiteralPath (Join-Path $CodexHome ".tmp/plugins/.agents/plugins/marketplace.json") -NoNewline
@@ -117,6 +132,7 @@ jobs:
         shell: pwsh
         env:
           CODEX_PLUGIN_REPAIR_PLATFORM: Windows
+          CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT: ${{ runner.temp }}/appx-bundled
           CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
         run: ./scripts/Fix-CodexPlugins.ps1
 
@@ -132,5 +148,12 @@ jobs:
             $latest = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/$plugin/latest"
             if (-not (Test-Path -LiteralPath $latest -PathType Container)) { exit 1 }
           }
+          $helper = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/computer-use/1.0.0/node_modules/@oai/sky/bin/windows/codex-computer-use.exe"
+          if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { exit 1 }
+          $escapedHelper = [regex]::Escape($helper)
+          if ($config -notmatch $escapedHelper) { exit 1 }
+          $backupCaches = @(Get-ChildItem -LiteralPath (Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/computer-use") -Directory -Filter "*.bak-plugin-repair-*")
+          if ($backupCaches.Count -lt 1) { exit 1 }
+          if ($config -match "bak-plugin-repair") { exit 1 }
           $curated = Join-Path $env:CODEX_HOME "plugins/cache/openai-curated/codex-security/2.0.0"
           if (-not (Test-Path -LiteralPath $curated -PathType Container)) { exit 1 }

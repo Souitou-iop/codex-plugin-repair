@@ -18,6 +18,8 @@
 - 确保 `config.toml` 里有 bundled / curated marketplace
 - 把已启用插件从 marketplace source 复制到持久 cache：`~/.codex/plugins/cache/...`
 - 刷新 bundled 插件的 `latest` 软链接
+- Windows 下，如果能找到 Codex Desktop AppX 源，会从 AppX 重建 bundled marketplace
+- Windows 下，会重建残缺的 bundled 插件缓存，并修正 Computer Use 的 `notify` 辅助程序路径
 - 检查所有 `enabled=true` 插件是否同时具备 marketplace 和 cache
 
 它不会启用随机插件，不会删除浏览器 Profile，不会修改 Chrome/Edge 用户数据，也不会把扩展强行装进浏览器 Profile。
@@ -46,6 +48,12 @@ cd codex-plugin-repair
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
+如果你的 Windows 安装不是标准 AppX 包，可以手动指定 bundled 源目录：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
+```
+
 执行完成后，重启 Codex Desktop。
 
 Linux 下执行完成后，重开 shell 或启动新的 Codex CLI 会话。
@@ -55,13 +63,13 @@ Linux 下执行完成后，重开 shell 或启动新的 Codex CLI 会话。
 使用前建议先阅读脚本内容：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.2/scripts/fix-codex-plugins.sh)
 ```
 
 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.2/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 ## 验证

@@ -30,6 +30,12 @@ cd codex-plugin-repair
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
+如果 Codex Desktop 不是标准 AppX 安装，可以手动指定 bundled 源目录：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
+```
+
 脚本会先给 `~/.codex/config.toml` 创建带时间戳的备份，再进行修改。
 
 ## 3. 重启 Codex Desktop
@@ -63,7 +69,21 @@ codex mcp list
 Correct: yes
 ```
 
-Windows 下脚本主要修复 Codex 插件 config/cache 状态。如果 Chrome 仍然连不上，重新在 Codex Desktop 里走一遍 Chrome 插件安装流程，让 Windows native messaging 注册刷新。
+Windows 下脚本还会在可用时从 Codex Desktop AppX 源重建 bundled marketplace，重建残缺的 bundled cache，并修正 Computer Use 的 `notify` 辅助程序路径。重启 Codex Desktop 后，可以用这些命令辅助验证：
+
+```powershell
+Get-ChildItem -Path "\\.\pipe\" | Where-Object { $_.Name -like "codex-computer-use-*" }
+```
+
+```powershell
+$logRoot = "$env:LOCALAPPDATA\Packages\OpenAI.Codex_2p2nqsd0c76g0\LocalCache\Local\Codex\Logs"
+Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1 |
+  Select-String -Pattern "computer-use native pipe startup ready|helper paths are unavailable|not_in_bundled_marketplace_plugin_names"
+```
+
+如果 Chrome 仍然连不上，重新在 Codex Desktop 里走一遍 Chrome 插件安装流程，让 Windows native messaging 注册刷新。
 
 ## 6. 如果仍然失败
 

@@ -30,6 +30,12 @@ cd codex-plugin-repair
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
+If Codex Desktop is not installed as the normal AppX package, provide the bundled source manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
+```
+
 The script creates a timestamped backup of `~/.codex/config.toml` before editing.
 
 ## 3. Restart Codex Desktop
@@ -63,7 +69,21 @@ Expected:
 Correct: yes
 ```
 
-On Windows, the script focuses on repairing Codex plugin config/cache state. If Chrome still cannot connect, rerun the Chrome plugin setup flow from Codex Desktop so Windows native messaging registration is refreshed.
+On Windows, the script also repairs the bundled marketplace from the Codex Desktop AppX source when available, rebuilds incomplete bundled cache directories, and updates the Computer Use `notify` helper path. After restarting Codex Desktop, useful checks are:
+
+```powershell
+Get-ChildItem -Path "\\.\pipe\" | Where-Object { $_.Name -like "codex-computer-use-*" }
+```
+
+```powershell
+$logRoot = "$env:LOCALAPPDATA\Packages\OpenAI.Codex_2p2nqsd0c76g0\LocalCache\Local\Codex\Logs"
+Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1 |
+  Select-String -Pattern "computer-use native pipe startup ready|helper paths are unavailable|not_in_bundled_marketplace_plugin_names"
+```
+
+If Chrome still cannot connect, rerun the Chrome plugin setup flow from Codex Desktop so Windows native messaging registration is refreshed.
 
 ## 6. What To Do If It Still Fails
 
