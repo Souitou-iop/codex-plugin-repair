@@ -55,13 +55,13 @@ On Linux, restart your shell session or start a new Codex CLI session after runn
 Review the script before using this form:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/fix-codex-plugins.sh)
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 ## Verify

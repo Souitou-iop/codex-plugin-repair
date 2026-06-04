@@ -55,13 +55,13 @@ Linux 下执行完成后，重开 shell 或启动新的 Codex CLI 会话。
 使用前建议先阅读脚本内容：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/fix-codex-plugins.sh)
 ```
 
 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.0/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.1/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 ## 验证

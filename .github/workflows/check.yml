@@ -1,0 +1,136 @@
+name: Check repair scripts
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  bash:
+    name: Bash script (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: Linux
+          - os: macos-latest
+            platform: Darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax check
+        run: bash -n scripts/fix-codex-plugins.sh
+
+      - name: Build mock Codex home
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODEX_HOME="$RUNNER_TEMP/codex-home"
+          mkdir -p "$CODEX_HOME"
+          cat > "$CODEX_HOME/config.toml" <<'EOF'
+          service_tier = "default"
+
+          [plugins."codex-security@openai-curated"]
+          enabled = true
+          EOF
+
+          for plugin in browser chrome computer-use; do
+            root="$CODEX_HOME/.tmp/bundled-marketplaces/openai-bundled/plugins/$plugin"
+            mkdir -p "$root/.codex-plugin"
+            printf '{"name":"%s","version":"1.0.0"}\n' "$plugin" > "$root/.codex-plugin/plugin.json"
+          done
+
+          mkdir -p "$CODEX_HOME/.tmp/plugins/.agents/plugins"
+          printf '{}\n' > "$CODEX_HOME/.tmp/plugins/.agents/plugins/marketplace.json"
+          root="$CODEX_HOME/.tmp/plugins/plugins/codex-security"
+          mkdir -p "$root/.codex-plugin"
+          printf '{"name":"codex-security","version":"2.0.0"}\n' > "$root/.codex-plugin/plugin.json"
+
+          echo "CODEX_HOME=$CODEX_HOME" >> "$GITHUB_ENV"
+
+      - name: Run repair script
+        env:
+          CODEX_PLUGIN_REPAIR_PLATFORM: ${{ matrix.platform }}
+          CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
+        run: ./scripts/fix-codex-plugins.sh
+
+      - name: Verify repaired state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$CODEX_HOME/config.toml"
+          grep -q 'service_tier = "fast"' "$CODEX_HOME/config.toml"
+          test -d "$CODEX_HOME/plugins/cache/openai-curated/codex-security/2.0.0"
+          if [[ "${{ matrix.platform }}" == "Darwin" ]]; then
+            for plugin in browser chrome computer-use; do
+              grep -q "\[plugins.\"$plugin@openai-bundled\"\]" "$CODEX_HOME/config.toml"
+              test -d "$CODEX_HOME/plugins/cache/openai-bundled/$plugin/1.0.0"
+              test -L "$CODEX_HOME/plugins/cache/openai-bundled/$plugin/latest"
+            done
+          fi
+
+  powershell:
+    name: PowerShell script (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse PowerShell script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path scripts/Fix-CodexPlugins.ps1), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | Format-List *
+            exit 1
+          }
+
+      - name: Build mock Codex home
+        shell: pwsh
+        run: |
+          $CodexHome = Join-Path $env:RUNNER_TEMP "codex-home"
+          New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
+          @'
+          service_tier = "default"
+
+          [plugins."codex-security@openai-curated"]
+          enabled = true
+          '@ | Set-Content -LiteralPath (Join-Path $CodexHome "config.toml") -NoNewline
+
+          foreach ($plugin in @("browser", "chrome", "computer-use")) {
+            $root = Join-Path $CodexHome ".tmp/bundled-marketplaces/openai-bundled/plugins/$plugin"
+            New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
+            "{`"name`":`"$plugin`",`"version`":`"1.0.0`"}" | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
+          }
+
+          New-Item -ItemType Directory -Path (Join-Path $CodexHome ".tmp/plugins/.agents/plugins") -Force | Out-Null
+          "{}" | Set-Content -LiteralPath (Join-Path $CodexHome ".tmp/plugins/.agents/plugins/marketplace.json") -NoNewline
+          $root = Join-Path $CodexHome ".tmp/plugins/plugins/codex-security"
+          New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
+          '{"name":"codex-security","version":"2.0.0"}' | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
+
+          "CODEX_HOME=$CodexHome" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Run repair script
+        shell: pwsh
+        env:
+          CODEX_PLUGIN_REPAIR_PLATFORM: Windows
+          CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
+        run: ./scripts/Fix-CodexPlugins.ps1
+
+      - name: Verify repaired state
+        shell: pwsh
+        run: |
+          $config = Get-Content -LiteralPath (Join-Path $env:CODEX_HOME "config.toml") -Raw
+          if ($config -notmatch 'service_tier = "fast"') { exit 1 }
+          foreach ($plugin in @("browser", "chrome", "computer-use")) {
+            if ($config -notmatch "\[plugins\.\`"$plugin@openai-bundled\`"\]") { exit 1 }
+            $cache = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/$plugin/1.0.0"
+            if (-not (Test-Path -LiteralPath $cache -PathType Container)) { exit 1 }
+            $latest = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/$plugin/latest"
+            if (-not (Test-Path -LiteralPath $latest -PathType Container)) { exit 1 }
+          }
+          $curated = Join-Path $env:CODEX_HOME "plugins/cache/openai-curated/codex-security/2.0.0"
+          if (-not (Test-Path -LiteralPath $curated -PathType Container)) { exit 1 }

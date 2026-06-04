@@ -140,7 +140,8 @@ function Get-CachedPluginDirs {
         return @()
     }
     return @(Get-ChildItem -LiteralPath $Base -Directory | Where-Object {
-        Test-Path -LiteralPath (Join-Path $_.FullName ".codex-plugin/plugin.json") -PathType Leaf
+        $_.Name -ne "latest" -and -not ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -and
+            (Test-Path -LiteralPath (Join-Path $_.FullName ".codex-plugin/plugin.json") -PathType Leaf)
     } | Sort-Object FullName)
 }
 
