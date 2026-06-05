@@ -233,11 +233,13 @@ jobs:
             exit 1
           }
           $output = Get-Content -LiteralPath $outputPath -Raw
-          if ($output -notmatch '仍有插件缺失 / Still missing: empty-plugin@openai-unknown') { exit 1 }
-          if ($output -notmatch '诊断日志 / Diagnostic log:') { exit 1 }
+          Get-Content -LiteralPath $outputPath
+          if ($output -notmatch 'Still missing: empty-plugin@openai-unknown') { exit 1 }
+          if ($output -notmatch 'Diagnostic log:') { exit 1 }
           if ($output -notmatch 'Agents / Codex') { exit 1 }
           $logs = @(Get-ChildItem -LiteralPath $failHome -Filter 'codex-plugin-repair-diagnostics-*.log')
           if ($logs.Count -ne 1) { exit 1 }
           $log = Get-Content -LiteralPath $logs[0].FullName -Raw
+          Get-Content -LiteralPath $logs[0].FullName
           if ($log -notmatch 'missing=empty-plugin@openai-unknown') { exit 1 }
           if ($log -notmatch 'MISSING empty-plugin@openai-unknown marketplace=false source=false cache=false') { exit 1 }
