@@ -249,7 +249,8 @@ jobs:
           $config = Get-Content -LiteralPath (Join-Path $env:CODEX_HOME "config.toml") -Raw
           $output = Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "repair-output.txt") -Raw
           if ($config -notmatch 'service_tier = "fast"') { exit 1 }
-          if ($output -notmatch '\[1/5\] 检查 Codex 配置...') { exit 1 }
+          if ($output -notmatch '\[1/6\] 检查正在运行的 Codex/插件进程...') { exit 1 }
+          if ($output -notmatch '\[2/6\] 检查 Codex 配置...') { exit 1 }
           if ($output -notmatch '插件覆盖报告 / Plugin coverage report:') { exit 1 }
           if ($output -notmatch '修复完成。') { exit 1 }
           if ($output -notmatch '后续建议：') { exit 1 }
