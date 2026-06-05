@@ -99,4 +99,6 @@ MISSING example@marketplace marketplace=true source=false cache=false
 - `cache=false`：持久 cache 缺失。
 - `source=false`：marketplace 源里找不到这个插件，所以脚本无法复制。
 
+失败时，脚本会在 Codex home 目录下写入类似 `codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log` 的诊断日志。你可以把这份日志粘贴到 Agents / Codex 软件中，让它继续帮你排查下一步。
+
 遇到这种情况，先重新安装或刷新对应 marketplace，然后再运行一次脚本。

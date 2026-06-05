@@ -14,7 +14,7 @@
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.5/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 执行后完全退出并重新打开 Codex Desktop。
@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scr
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.5/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -156,6 +156,14 @@ MISSING example@marketplace marketplace=true source=false cache=false
 - `marketplace=false`：`config.toml` 缺少对应 marketplace。
 - `cache=false`：持久 cache 缺失。
 - `source=false`：marketplace 源目录里找不到该插件，脚本无法复制。
+
+如果脚本以错误状态退出，还会在 `~/.codex/` 下写入诊断日志，例如：
+
+```text
+~/.codex/codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log
+```
+
+你可以把这份日志粘贴到 Agents / Codex 软件中，让它继续帮你排查下一步。
 
 如果 Windows 上 Chrome 仍无法连接，先在 Codex Desktop 里重新走一次 Chrome 插件安装流程，让 Windows native messaging 注册刷新。
 

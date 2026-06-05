@@ -14,7 +14,7 @@ Run the one-line command for your platform. The script backs up `~/.codex/config
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.5/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 Fully quit and reopen Codex Desktop after the script finishes.
@@ -22,7 +22,7 @@ Fully quit and reopen Codex Desktop after the script finishes.
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.5/scripts/fix-codex-plugins.sh)
 ```
 
 Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.
@@ -156,6 +156,14 @@ Focus on these fields:
 - `marketplace=false`: `config.toml` is missing that marketplace.
 - `cache=false`: persistent cache is missing.
 - `source=false`: the marketplace source directory does not contain that plugin, so the script cannot copy it.
+
+When the script exits with an error, it also writes a diagnostic log under `~/.codex/`, for example:
+
+```text
+~/.codex/codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log
+```
+
+Paste that log into Agents / Codex if you want help with the next troubleshooting step.
 
 If Chrome still cannot connect on Windows, rerun the Chrome plugin setup flow from Codex Desktop so Windows native messaging registration is refreshed.
 

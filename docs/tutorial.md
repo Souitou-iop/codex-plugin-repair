@@ -99,4 +99,6 @@ MISSING example@marketplace marketplace=true source=false cache=false
 - `cache=false`: persistent cache is missing.
 - `source=false`: the marketplace source does not contain the plugin, so the script cannot copy it.
 
+On failure, the script writes a diagnostic log named like `codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log` under your Codex home directory. Paste that log into Agents / Codex if you want help with the next troubleshooting step.
+
 In that case, reinstall or refresh the affected marketplace, then run the script again.

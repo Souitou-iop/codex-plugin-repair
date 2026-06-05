@@ -83,6 +83,28 @@ jobs:
             done
           fi
 
+      - name: Verify diagnostic log on failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail_home="$RUNNER_TEMP/codex-home-fail"
+          mkdir -p "$fail_home/plugins/cache/openai-unknown/empty-plugin"
+          cat > "$fail_home/config.toml" <<'EOF'
+          [plugins."empty-plugin@openai-unknown"]
+          enabled = true
+          EOF
+          if CODEX_HOME="$fail_home" CODEX_PLUGIN_REPAIR_PLATFORM="Linux" ./scripts/fix-codex-plugins.sh > "$RUNNER_TEMP/failure-output.txt" 2>&1; then
+            cat "$RUNNER_TEMP/failure-output.txt"
+            exit 1
+          fi
+          grep -q '仍有插件缺失 / Still missing: empty-plugin@openai-unknown' "$RUNNER_TEMP/failure-output.txt"
+          grep -q '诊断日志 / Diagnostic log:' "$RUNNER_TEMP/failure-output.txt"
+          grep -q 'Agents / Codex' "$RUNNER_TEMP/failure-output.txt"
+          log_path=$(find "$fail_home" -maxdepth 1 -name 'codex-plugin-repair-diagnostics-*.log' | head -n 1)
+          test -n "$log_path"
+          grep -q 'missing=empty-plugin@openai-unknown' "$log_path"
+          grep -q 'MISSING empty-plugin@openai-unknown marketplace=false source=false cache=false' "$log_path"
+
   powershell:
     name: PowerShell script (Windows)
     runs-on: windows-latest
@@ -192,3 +214,30 @@ jobs:
           if (-not (Test-Path -LiteralPath $curated -PathType Container)) { exit 1 }
           $unknown = Join-Path $env:CODEX_HOME "plugins/cache/openai-unknown/mystery/9.9.9"
           if (-not (Test-Path -LiteralPath $unknown -PathType Container)) { exit 1 }
+
+      - name: Verify diagnostic log on failure
+        shell: pwsh
+        run: |
+          $failHome = Join-Path $env:RUNNER_TEMP "codex-home-fail"
+          New-Item -ItemType Directory -Path (Join-Path $failHome "plugins/cache/openai-unknown/empty-plugin") -Force | Out-Null
+          @'
+          [plugins."empty-plugin@openai-unknown"]
+          enabled = true
+          '@ | Set-Content -LiteralPath (Join-Path $failHome "config.toml") -NoNewline
+          $outputPath = Join-Path $env:RUNNER_TEMP "failure-output.txt"
+          $env:CODEX_HOME = $failHome
+          $env:CODEX_PLUGIN_REPAIR_PLATFORM = "Linux"
+          & ./scripts/Fix-CodexPlugins.ps1 > $outputPath 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Get-Content -LiteralPath $outputPath
+            exit 1
+          }
+          $output = Get-Content -LiteralPath $outputPath -Raw
+          if ($output -notmatch '仍有插件缺失 / Still missing: empty-plugin@openai-unknown') { exit 1 }
+          if ($output -notmatch '诊断日志 / Diagnostic log:') { exit 1 }
+          if ($output -notmatch 'Agents / Codex') { exit 1 }
+          $logs = @(Get-ChildItem -LiteralPath $failHome -Filter 'codex-plugin-repair-diagnostics-*.log')
+          if ($logs.Count -ne 1) { exit 1 }
+          $log = Get-Content -LiteralPath $logs[0].FullName -Raw
+          if ($log -notmatch 'missing=empty-plugin@openai-unknown') { exit 1 }
+          if ($log -notmatch 'MISSING empty-plugin@openai-unknown marketplace=false source=false cache=false') { exit 1 }

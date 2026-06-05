@@ -9,9 +9,32 @@ $ErrorActionPreference = "Stop"
 $Config = Join-Path $CodexHome "config.toml"
 $Stamp = Get-Date -Format "yyyyMMddHHmmss"
 $Backup = "$Config.bak-plugin-repair-$Stamp"
+$Log = Join-Path $CodexHome "codex-plugin-repair-diagnostics-$Stamp.log"
+
+function Write-AgentsHelp {
+    param([string]$LogPath)
+    [Console]::Error.WriteLine("诊断日志 / Diagnostic log: $LogPath")
+    [Console]::Error.WriteLine("你可以把这份日志粘贴到 Agents / Codex 软件中继续排查。")
+    [Console]::Error.WriteLine("You can paste this log into Agents / Codex to continue troubleshooting.")
+}
+
+function Write-MissingConfigLog {
+    param([string]$LogPath)
+    New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
+    @(
+        "Codex Plugin Repair diagnostic log",
+        "Codex 插件修复诊断日志",
+        "timestamp=$Stamp",
+        "codex_home=$CodexHome",
+        "config=$Config",
+        "error=missing Codex config"
+    ) | Set-Content -LiteralPath $LogPath -Encoding UTF8
+}
 
 if (-not (Test-Path -LiteralPath $Config -PathType Leaf)) {
-    Write-Error "错误：找不到 Codex 配置文件。 / Error: missing Codex config: $Config"
+    Write-MissingConfigLog -LogPath $Log
+    [Console]::Error.WriteLine("错误：找不到 Codex 配置文件。 / Error: missing Codex config: $Config")
+    Write-AgentsHelp -LogPath $Log
     exit 1
 }
 
@@ -411,12 +434,24 @@ function Write-PluginCoverageReport {
     )
 
     Write-Host ""
-    Write-Host "插件覆盖报告 / Plugin coverage report:"
+    foreach ($Line in Get-PluginCoverageReportLines -Text $Text -KnownMarketplaces $KnownMarketplaces) {
+        Write-Host $Line
+    }
+}
+
+function Get-PluginCoverageReportLines {
+    param(
+        [string]$Text,
+        [hashtable]$KnownMarketplaces
+    )
+
+    $Lines = [System.Collections.Generic.List[string]]::new()
+    $Lines.Add("插件覆盖报告 / Plugin coverage report:")
     $MarketplaceTables = Get-MarketplaceTables $Text
     $CacheMarkets = @(Get-CacheMarketplaces)
     $AllMarkets = @($MarketplaceTables.Keys + $CacheMarkets + $KnownMarketplaces.Keys | Sort-Object -Unique)
 
-    Write-Host "Marketplaces / 插件市场:"
+    $Lines.Add("Marketplaces / 插件市场:")
     foreach ($Market in $AllMarkets) {
         $DefaultSource = if ($KnownMarketplaces.ContainsKey($Market)) { $KnownMarketplaces[$Market] } else { "" }
         $SourceMarket = Get-MarketplaceSource -Text $Text -Name $Market -Default $DefaultSource
@@ -424,10 +459,10 @@ function Write-PluginCoverageReport {
         $HasSource = $SourceMarket -and (Test-Path -LiteralPath $SourceMarket -PathType Container)
         $HasCache = $CacheMarkets -contains $Market
         $Label = if ($KnownMarketplaces.ContainsKey($Market) -or $HasTable) { "KNOWN" } else { "UNKNOWN" }
-        Write-Host "$Label $Market table=$(Format-Bool $HasTable) source=$(Format-Bool $HasSource) cache=$(Format-Bool $HasCache)"
+        $Lines.Add("$Label $Market table=$(Format-Bool $HasTable) source=$(Format-Bool $HasSource) cache=$(Format-Bool $HasCache)")
     }
 
-    Write-Host "Enabled plugins / 已启用插件:"
+    $Lines.Add("Enabled plugins / 已启用插件:")
     foreach ($Plugin in Get-PluginTables $Text) {
         if (-not $Plugin.Enabled) { continue }
         $Cache = Join-Path $CodexHome "plugins/cache/$($Plugin.Marketplace)/$($Plugin.Name)"
@@ -438,7 +473,7 @@ function Write-PluginCoverageReport {
         $OkCache = Test-PluginCacheExists $Cache
         $SourceExists = $Source -and (Test-Path -LiteralPath $Source -PathType Container)
         $Status = if ($OkCache) { "OK" } else { "MISSING" }
-        Write-Host "$Status $($Plugin.Name)@$($Plugin.Marketplace) marketplace=$(Format-Bool $OkMarket) source=$(Format-Bool $SourceExists) cache=$(Format-Bool $OkCache)"
+        $Lines.Add("$Status $($Plugin.Name)@$($Plugin.Marketplace) marketplace=$(Format-Bool $OkMarket) source=$(Format-Bool $SourceExists) cache=$(Format-Bool $OkCache)")
     }
 
     if ($env:CODEX_PLUGIN_REPAIR_VERBOSE_REPORT -eq "1") {
@@ -446,7 +481,7 @@ function Write-PluginCoverageReport {
         foreach ($Plugin in Get-PluginTables $Text) {
             if ($Plugin.Enabled) { $EnabledIds["$($Plugin.Name)@$($Plugin.Marketplace)"] = $true }
         }
-        Write-Host "Available but not enabled / 可用但未启用:"
+        $Lines.Add("Available but not enabled / 可用但未启用:")
         $Found = 0
         foreach ($Market in $AllMarkets) {
             $DefaultSource = if ($KnownMarketplaces.ContainsKey($Market)) { $KnownMarketplaces[$Market] } else { "" }
@@ -455,13 +490,36 @@ function Write-PluginCoverageReport {
             foreach ($Name in Get-SourcePluginNames $SourceMarket) {
                 $PluginId = "$Name@$Market"
                 if (-not $EnabledIds.ContainsKey($PluginId)) {
-                    Write-Host $PluginId
+                    $Lines.Add($PluginId)
                     $Found++
                 }
             }
         }
-        if ($Found -eq 0) { Write-Host "none / 无" }
+        if ($Found -eq 0) { $Lines.Add("none / 无") }
     }
+    return $Lines
+}
+
+function Write-DiagnosticLog {
+    param(
+        [string]$Text,
+        [hashtable]$KnownMarketplaces,
+        [string[]]$Missing
+    )
+
+    $Lines = @(
+        "Codex Plugin Repair diagnostic log",
+        "Codex 插件修复诊断日志",
+        "timestamp=$Stamp",
+        "platform=$DetectedPlatform",
+        "codex_home=$CodexHome",
+        "config=$Config",
+        "backup=$Backup",
+        "missing=$($Missing -join ', ')",
+        ""
+    )
+    $Lines += Get-PluginCoverageReportLines -Text $Text -KnownMarketplaces $KnownMarketplaces
+    $Lines | Set-Content -LiteralPath $Log -Encoding UTF8
 }
 
 $Text = Get-Content -LiteralPath $Config -Raw
@@ -548,7 +606,9 @@ foreach ($Plugin in Get-EnabledPlugins $FinalText) {
 }
 
 if ($Missing.Count -gt 0) {
-    Write-Error ("仍有插件缺失 / Still missing: " + ($Missing -join ", "))
+    Write-DiagnosticLog -Text $FinalText -KnownMarketplaces $KnownMarketplaces -Missing $Missing
+    [Console]::Error.WriteLine("仍有插件缺失 / Still missing: " + ($Missing -join ", "))
+    Write-AgentsHelp -LogPath $Log
     exit 2
 }
 

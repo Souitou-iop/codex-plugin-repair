@@ -5,17 +5,36 @@ CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 CONFIG="$CODEX_HOME/config.toml"
 STAMP="$(date +%Y%m%d%H%M%S)"
 BACKUP="$CONFIG.bak-plugin-repair-$STAMP"
+LOG="$CODEX_HOME/codex-plugin-repair-diagnostics-$STAMP.log"
+
+print_agents_help() {
+  local log_path="$1"
+  echo "诊断日志 / Diagnostic log: $log_path" >&2
+  echo "你可以把这份日志粘贴到 Agents / Codex 软件中继续排查。" >&2
+  echo "You can paste this log into Agents / Codex to continue troubleshooting." >&2
+}
 
 if [[ ! -f "$CONFIG" ]]; then
   echo "错误：找不到 Codex 配置文件。" >&2
   echo "Error: missing Codex config: $CONFIG" >&2
+  if mkdir -p "$CODEX_HOME" 2>/dev/null; then
+    {
+      echo "Codex Plugin Repair diagnostic log"
+      echo "Codex 插件修复诊断日志"
+      echo "timestamp=$STAMP"
+      echo "codex_home=$CODEX_HOME"
+      echo "config=$CONFIG"
+      echo "error=missing Codex config"
+    } > "$LOG"
+    print_agents_help "$LOG"
+  fi
   exit 1
 fi
 
 cp "$CONFIG" "$BACKUP"
 echo "已备份配置文件。/ Backed up config to: $BACKUP"
 
-python3 - "$CODEX_HOME" "$CONFIG" <<'PY'
+python3 - "$CODEX_HOME" "$CONFIG" "$LOG" "$BACKUP" "$STAMP" <<'PY'
 import json
 import os
 import pathlib
@@ -27,6 +46,9 @@ from datetime import datetime, timezone
 
 codex_home = pathlib.Path(sys.argv[1]).expanduser()
 config_path = pathlib.Path(sys.argv[2]).expanduser()
+log_path = pathlib.Path(sys.argv[3]).expanduser()
+backup_path = pathlib.Path(sys.argv[4]).expanduser()
+stamp = sys.argv[5]
 text = config_path.read_text()
 repair_timestamp = os.environ.get(
     "CODEX_PLUGIN_REPAIR_TIMESTAMP",
@@ -141,22 +163,22 @@ def has_plugin_cache(dst_base):
         for p in dst_base.iterdir()
     )
 
-def print_plugin_coverage_report(cfg):
-    print("\n插件覆盖报告 / Plugin coverage report:")
+def plugin_coverage_report_lines(cfg):
+    lines = ["插件覆盖报告 / Plugin coverage report:"]
     markets = marketplace_tables(cfg)
     cache_markets = cache_marketplaces()
     all_markets = sorted(set(markets) | cache_markets | set(known_marketplaces))
 
-    print("Marketplaces / 插件市场:")
+    lines.append("Marketplaces / 插件市场:")
     for market in all_markets:
         source = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
         has_table = market in markets
         has_source = bool(str(source)) and source.exists()
         has_cache = market in cache_markets
         label = "KNOWN" if market in known_marketplaces or has_table else "UNKNOWN"
-        print(f"{label} {market} table={yn(has_table)} source={yn(has_source)} cache={yn(has_cache)}")
+        lines.append(f"{label} {market} table={yn(has_table)} source={yn(has_source)} cache={yn(has_cache)}")
 
-    print("Enabled plugins / 已启用插件:")
+    lines.append("Enabled plugins / 已启用插件:")
     for name, market, enabled in plugin_tables(cfg):
         if not enabled:
             continue
@@ -167,11 +189,11 @@ def print_plugin_coverage_report(cfg):
         ok_cache = has_plugin_cache(cache)
         source_exists = bool(source and source.exists())
         status = "OK" if ok_cache else "MISSING"
-        print(f"{status} {name}@{market} marketplace={yn(ok_market)} source={yn(source_exists)} cache={yn(ok_cache)}")
+        lines.append(f"{status} {name}@{market} marketplace={yn(ok_market)} source={yn(source_exists)} cache={yn(ok_cache)}")
 
     if verbose_report:
         enabled_ids = {f"{name}@{market}" for name, market, enabled in plugin_tables(cfg) if enabled}
-        print("Available but not enabled / 可用但未启用:")
+        lines.append("Available but not enabled / 可用但未启用:")
         found = 0
         for market in all_markets:
             source = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
@@ -180,10 +202,36 @@ def print_plugin_coverage_report(cfg):
             for name in sorted(source_plugin_names(source)):
                 plugin_id = f"{name}@{market}"
                 if plugin_id not in enabled_ids:
-                    print(plugin_id)
+                    lines.append(plugin_id)
                     found += 1
         if found == 0:
-            print("none / 无")
+            lines.append("none / 无")
+    return lines
+
+def print_plugin_coverage_report(cfg):
+    print()
+    for line in plugin_coverage_report_lines(cfg):
+        print(line)
+
+def write_diagnostic_log(cfg, missing):
+    lines = [
+        "Codex Plugin Repair diagnostic log",
+        "Codex 插件修复诊断日志",
+        f"timestamp={stamp}",
+        f"platform={detected_platform}",
+        f"codex_home={codex_home}",
+        f"config={config_path}",
+        f"backup={backup_path}",
+        "missing=" + ", ".join(missing),
+        "",
+    ]
+    lines.extend(plugin_coverage_report_lines(cfg))
+    log_path.write_text("\n".join(lines) + "\n")
+
+def print_agents_help():
+    print(f"诊断日志 / Diagnostic log: {log_path}", file=sys.stderr)
+    print("你可以把这份日志粘贴到 Agents / Codex 软件中继续排查。", file=sys.stderr)
+    print("You can paste this log into Agents / Codex to continue troubleshooting.", file=sys.stderr)
 
 text = ensure_marketplace(text, "openai-bundled", bundled_source)
 if pathlib.Path(curated_source, ".agents", "plugins", "marketplace.json").exists():
@@ -297,7 +345,9 @@ for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', cfg, 
         missing.append(f"{name}@{market}")
 
 if missing:
+    write_diagnostic_log(cfg, missing)
     print("\n仍有插件缺失 / Still missing: " + ", ".join(missing), file=sys.stderr)
+    print_agents_help()
     sys.exit(2)
 PY
 
