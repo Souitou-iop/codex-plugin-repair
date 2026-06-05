@@ -16,12 +16,12 @@
 3. 看到语言选择时输入 `1` 使用中文，或输入 `2` 使用英文。
 4. 看完脚本说明后，输入 `y` 或 `yes` 开始修复；输入 `n` 或 `no` 会退出且不修改任何文件。
 
-脚本会先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。脚本不会删除浏览器数据，不会修改浏览器 Profile，也不会自动关闭应用或结束进程。
+脚本会先检查是否有常见 Codex/插件进程正在运行，再备份 `~/.codex/config.toml` 并修复本地插件配置和 cache。脚本不会删除浏览器数据，不会修改浏览器 Profile，也不会自动关闭应用或结束进程；如果检测到可能占用文件的进程，只会提示你。
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.11/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.12/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 完成后重新打开 Codex Desktop。
@@ -29,7 +29,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.11/sc
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.11/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.12/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -98,6 +98,8 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 | Windows | 启用 `browser` / `chrome` / `computer-use`，从 AppX 源重建 bundled marketplace，重建残缺 cache，刷新 `latest` junction，修正 Computer Use `notify` helper 路径。 |
 | macOS | 启用 `browser` / `chrome` / `computer-use`，修复 bundled / curated marketplace 和持久 cache，刷新 bundled 插件 `latest` 软链接。 |
 | Linux | 不强行启用 Desktop 插件，只修复当前配置里已经 `enabled=true` 的插件 marketplace/cache。 |
+
+所有平台都会先提示可能占用插件文件的常见进程，例如 Codex、`extension-host`、`codex-computer-use`。这是预警，不是强制操作；脚本不会替你关闭这些进程。
 
 脚本不会：
 

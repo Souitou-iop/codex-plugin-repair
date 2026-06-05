@@ -33,19 +33,20 @@ confirm_execution() {
   if [[ "$LANGUAGE" == "en-US" ]]; then
     echo "Codex Plugin Repair"
     echo "This script will:"
-    echo "1. Check your Codex config file."
-    echo "2. Back up config.toml before changing anything."
-    echo "3. Repair known marketplace entries and service_tier when needed."
-    echo "4. Repair cache for plugins that are already enabled."
+    echo "1. Check whether common Codex/plugin processes are running."
+    echo "2. Check your Codex config file."
+    echo "3. Back up config.toml before changing anything."
+    echo "4. Repair known marketplace entries and service_tier when needed."
+    echo "5. Repair cache for plugins that are already enabled."
     case "$SCRIPT_PLATFORM" in
       Darwin)
-        echo "5. On macOS, enable Browser, Chrome, and Computer Use bundled plugins."
+        echo "6. On macOS, enable Browser, Chrome, and Computer Use, repair bundled marketplace/cache, and refresh latest links when possible."
         ;;
       Linux)
-        echo "5. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
+        echo "6. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
         ;;
       *)
-        echo "5. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
+        echo "6. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
         ;;
     esac
     echo "It will not delete browser data, browser profiles, or the active config.toml."
@@ -58,19 +59,20 @@ confirm_execution() {
   else
     echo "Codex 插件修复脚本"
     echo "这个脚本将执行以下操作："
-    echo "1. 检查 Codex 配置文件。"
-    echo "2. 修改前先备份 config.toml。"
-    echo "3. 按需修复已知 marketplace 配置和 service_tier。"
-    echo "4. 修复当前已经启用插件的缓存。"
+    echo "1. 检查常见 Codex/插件进程是否正在运行。"
+    echo "2. 检查 Codex 配置文件。"
+    echo "3. 修改前先备份 config.toml。"
+    echo "4. 按需修复已知 marketplace 配置和 service_tier。"
+    echo "5. 修复当前已经启用插件的缓存。"
     case "$SCRIPT_PLATFORM" in
       Darwin)
-        echo "5. 在 macOS 上启用 Browser、Chrome、Computer Use bundled 插件。"
+        echo "6. 在 macOS 上启用 Browser、Chrome、Computer Use，尽量修复 bundled marketplace/cache，并刷新 latest 链接。"
         ;;
       Linux)
-        echo "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
+        echo "6. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
         ;;
       *)
-        echo "5. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
+        echo "6. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
         ;;
     esac
     echo "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
@@ -96,10 +98,54 @@ confirm_execution() {
 
 confirm_execution
 echo
+show_running_process_warning() {
+  local matches
+  if ! command -v pgrep >/dev/null 2>&1; then
+    if [[ "$LANGUAGE" == "en-US" ]]; then
+      echo "Process preflight skipped because pgrep is unavailable."
+    else
+      echo "未找到 pgrep，跳过进程预检。"
+    fi
+    return
+  fi
+
+  matches="$(pgrep -fl 'Codex|extension-host|codex-computer-use' 2>/dev/null | grep -v "^$$ " || true)"
+  if [[ -z "$matches" ]]; then
+    if [[ "$LANGUAGE" == "en-US" ]]; then
+      echo "No common Codex plugin processes were detected."
+    else
+      echo "未检测到常见的 Codex 插件相关进程。"
+    fi
+    return
+  fi
+
+  if [[ "$LANGUAGE" == "en-US" ]]; then
+    echo "Warning: these processes may keep plugin files locked:"
+  else
+    echo "提醒：以下进程可能正在占用插件文件："
+  fi
+  printf '%s\n' "$matches" | while IFS= read -r line; do
+    echo "- $line"
+  done
+
+  if [[ "$LANGUAGE" == "en-US" ]]; then
+    echo "The script will not close them automatically. If repair fails with a file-in-use error, fully quit Codex Desktop and related plugin windows, then run this script again."
+  else
+    echo "脚本不会自动关闭这些进程。如果稍后遇到文件被占用，请完全退出 Codex Desktop 和相关插件窗口，然后重新运行脚本。"
+  fi
+}
+
 if [[ "$LANGUAGE" == "en-US" ]]; then
-  echo "[1/5] Checking Codex config..."
+  echo "[1/6] Checking running Codex/plugin processes..."
 else
-  echo "[1/5] 检查 Codex 配置..."
+  echo "[1/6] 检查正在运行的 Codex/插件进程..."
+fi
+show_running_process_warning
+echo
+if [[ "$LANGUAGE" == "en-US" ]]; then
+  echo "[2/6] Checking Codex config..."
+else
+  echo "[2/6] 检查 Codex 配置..."
 fi
 
 print_agents_help() {
@@ -163,7 +209,7 @@ elif ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "[2/5] 备份配置文件 / Backing up config..."
+echo "[3/6] 备份配置文件 / Backing up config..."
 cp "$CONFIG" "$BACKUP"
 echo "已备份配置文件。/ Backed up config to: $BACKUP"
 
@@ -261,7 +307,7 @@ known_marketplaces = {
 }
 verbose_report = os.environ.get("CODEX_PLUGIN_REPAIR_VERBOSE_REPORT") == "1"
 
-print(f"\n[3/5] 检测平台和修复 marketplace / Detecting platform and repairing marketplaces: {detected_platform}")
+print(f"\n[4/6] 检测平台和修复 marketplace / Detecting platform and repairing marketplaces: {detected_platform}")
 
 def yn(value):
     return "true" if value else "false"
@@ -517,12 +563,12 @@ def enabled_plugins(src):
             yield name, market
 
 # Repair every already-enabled plugin that can be resolved from its marketplace.
-print("\n[4/5] 修复已启用插件缓存 / Repairing enabled plugin cache...")
+print("\n[5/6] 修复已启用插件缓存 / Repairing enabled plugin cache...")
 for name, market in enabled_plugins(config_path.read_text()):
     copy_plugin(market, name)
 
 cfg = config_path.read_text()
-print("\n[5/5] 生成插件覆盖报告 / Generating plugin coverage report...")
+print("\n[6/6] 生成插件覆盖报告 / Generating plugin coverage report...")
 print_plugin_coverage_report(cfg)
 markets = set(re.findall(r'^\[marketplaces\.([^\]]+)\]', cfg, re.M))
 missing = []
