@@ -44,11 +44,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -Bundled
 
 Linux 下执行完成后，启动新的 Codex CLI 会话即可。
 
-## 4. 验证 MCP 状态
+## 4. 可选：验证 MCP 状态
 
 ```bash
 codex mcp list
 ```
+
+如果没有安装 Codex CLI，或者终端里没有 `codex` 命令，请跳过这一步。
 
 预期结果：
 

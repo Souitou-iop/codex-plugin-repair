@@ -9,12 +9,12 @@
 
 ## 快速修复
 
-急用时直接执行下面的一行命令。脚本会先让你选择中文或英文，再说明将执行哪些操作；只有输入 `yes` 确认后才会开始修复。执行时会显示步骤指引，先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache；完成或遇到问题时，会给出清晰的下一步操作。
+急用时直接执行下面的一行命令。脚本会先让你选择中文或英文，再说明将执行哪些操作；只有输入 `yes` 或 `y` 确认后才会开始修复。执行时会显示步骤指引，先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache；完成或遇到问题时，会给出清晰的下一步操作。
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.8/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.9/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 执行后完全退出并重新打开 Codex Desktop。
@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.8/scr
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.8/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.9/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -101,13 +101,13 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 
 ## 怎么验证
 
-通用检查：
+可选的 Codex CLI 检查。如果没有安装 Codex CLI，或者终端里没有 `codex` 命令，请跳过这一步：
 
 ```bash
 codex mcp list
 ```
 
-如果 Computer Use 已启用，应能看到 `computer-use`。
+在 CLI 可用的环境里，如果 Computer Use 已启用，应能看到 `computer-use`。
 
 macOS Chrome native host：
 

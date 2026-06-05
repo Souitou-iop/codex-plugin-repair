@@ -44,11 +44,13 @@ Quit and reopen Codex Desktop so the app reloads plugin configuration.
 
 On Linux, start a new Codex CLI session instead.
 
-## 4. Verify MCP State
+## 4. Optional: Verify MCP State
 
 ```bash
 codex mcp list
 ```
+
+Skip this check if the `codex` command is not installed or not available in `PATH`.
 
 Expected:
 

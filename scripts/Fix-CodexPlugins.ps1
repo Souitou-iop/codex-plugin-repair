@@ -78,7 +78,7 @@ function Confirm-Execution {
         Write-Host "It will not close apps or terminate processes automatically. If files are locked, it will ask you to close Codex Desktop and retry."
         Write-Host ""
         if ($SkipPrompt) { return }
-        $Answer = Read-Host "Type yes to continue, or no to exit"
+        $Answer = Read-Host "Type yes/y to continue, or no/n to exit"
     } else {
         Write-Host "Codex 插件修复脚本"
         Write-Host "这个脚本将执行以下操作："
@@ -101,17 +101,20 @@ function Confirm-Execution {
         Write-Host "脚本不会自动关闭应用或结束进程；如果文件被占用，会提示你关闭 Codex Desktop 后重试。"
         Write-Host ""
         if ($SkipPrompt) { return }
-        $Answer = Read-Host "输入 yes 继续执行，输入 no 退出"
+        $Answer = Read-Host "输入 yes 或 y 继续执行，输入 no 或 n 退出"
     }
 
-    if ($Answer -ne "yes") {
-        if ($SelectedLanguage -eq "en-US") {
-            Write-Host "Cancelled. No changes were made."
-        } else {
-            Write-Host "已取消，未做任何修改。"
-        }
-        exit 0
+    $NormalizedAnswer = $Answer.Trim().ToLowerInvariant()
+    if ($NormalizedAnswer -eq "yes" -or $NormalizedAnswer -eq "y") {
+        return
     }
+
+    if ($SelectedLanguage -eq "en-US") {
+        Write-Host "Cancelled. No changes were made."
+    } else {
+        Write-Host "已取消，未做任何修改。"
+    }
+    exit 0
 }
 
 $SelectedLanguage = Get-SelectedLanguage -RequestedLanguage $Language
@@ -792,16 +795,16 @@ if ($Missing.Count -gt 0) {
 
 Write-Host ""
 Write-Host "修复完成。/ Repair complete."
-Write-Host "下一步 / Next steps:"
+Write-Host "后续建议（不是菜单选项，不需要输入数字） / Next steps (not a menu; do not type the numbers):"
 if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
-    Write-Host "1. 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
-    Write-Host "If Codex Desktop is open, restart it once so it reloads config.toml."
+    Write-Host "- 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
+    Write-Host "- If Codex Desktop is open, restart it once so it reloads config.toml."
 } elseif ($SystemName -eq "linux") {
-    Write-Host "1. 请启动新的 Codex CLI 会话以重新加载 config.toml。"
-    Write-Host "Start a new Codex CLI session so it reloads config.toml."
+    Write-Host "- 请启动新的 Codex CLI 会话以重新加载 config.toml。"
+    Write-Host "- Start a new Codex CLI session so it reloads config.toml."
 } else {
-    Write-Host "1. 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
-    Write-Host "Restart Codex or start a new Codex session so it reloads config.toml."
+    Write-Host "- 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
+    Write-Host "- Restart Codex or start a new Codex session so it reloads config.toml."
 }
-Write-Host "2. 可运行 'codex mcp list' 检查工具是否出现。"
-Write-Host "You can run 'codex mcp list' to check whether the tools appear."
+Write-Host "- 可选：只有安装了 Codex CLI 且 'codex' 命令可用时，才运行 'codex mcp list' 检查工具是否出现。"
+Write-Host "- Optional: run 'codex mcp list' only if Codex CLI is installed and the 'codex' command is available."

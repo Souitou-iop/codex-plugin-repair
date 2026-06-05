@@ -29,7 +29,7 @@ jobs:
           cancel_home="$RUNNER_TEMP/codex-home-cancel"
           mkdir -p "$cancel_home"
           printf 'service_tier = "default"\n' > "$cancel_home/config.toml"
-          printf '1\nno\n' | CODEX_HOME="$cancel_home" ./scripts/fix-codex-plugins.sh > "$RUNNER_TEMP/cancel-output.txt"
+          printf '1\nn\n' | CODEX_HOME="$cancel_home" ./scripts/fix-codex-plugins.sh > "$RUNNER_TEMP/cancel-output.txt"
           grep -q '已取消，未做任何修改。' "$RUNNER_TEMP/cancel-output.txt"
           if [[ "${{ matrix.platform }}" == "Linux" ]]; then
             grep -q '在 Linux 上不启用 Desktop 专属 bundled 插件' "$RUNNER_TEMP/cancel-output.txt"
@@ -95,7 +95,7 @@ jobs:
           grep -q '\[1/5\] 检查 Codex 配置...' "$RUNNER_TEMP/repair-output.txt"
           grep -q '插件覆盖报告 / Plugin coverage report:' "$RUNNER_TEMP/repair-output.txt"
           grep -q '修复完成。/ Repair complete.' "$RUNNER_TEMP/repair-output.txt"
-          grep -q '下一步 / Next steps:' "$RUNNER_TEMP/repair-output.txt"
+          grep -q '后续建议（不是菜单选项，不需要输入数字） / Next steps' "$RUNNER_TEMP/repair-output.txt"
           grep -q 'OK mystery@openai-unknown marketplace=false source=false cache=true' "$RUNNER_TEMP/repair-output.txt"
           test -d "$CODEX_HOME/plugins/cache/openai-curated/codex-security/2.0.0"
           test -d "$CODEX_HOME/plugins/cache/openai-unknown/mystery/9.9.9"
@@ -154,7 +154,7 @@ jobs:
           'service_tier = "default"' | Set-Content -LiteralPath (Join-Path $cancelHome "config.toml") -NoNewline
           $outputPath = Join-Path $env:RUNNER_TEMP "cancel-output.txt"
           $env:CODEX_PLUGIN_REPAIR_PLATFORM = "Windows"
-          "no" | pwsh -NoProfile -File ./scripts/Fix-CodexPlugins.ps1 -CodexHome $cancelHome -Language zh-CN > $outputPath 2>&1
+          "n" | pwsh -NoProfile -File ./scripts/Fix-CodexPlugins.ps1 -CodexHome $cancelHome -Language zh-CN > $outputPath 2>&1
           if ($LASTEXITCODE -ne 0) {
             Get-Content -LiteralPath $outputPath
             exit 1
@@ -245,7 +245,7 @@ jobs:
           if ($output -notmatch '\[1/5\] 检查 Codex 配置...') { exit 1 }
           if ($output -notmatch '插件覆盖报告 / Plugin coverage report:') { exit 1 }
           if ($output -notmatch '修复完成。/ Repair complete.') { exit 1 }
-          if ($output -notmatch '下一步 / Next steps:') { exit 1 }
+          if ($output -notmatch '后续建议（不是菜单选项，不需要输入数字） / Next steps') { exit 1 }
           if ($output -notmatch 'OK mystery@openai-unknown marketplace=false source=false cache=true') { exit 1 }
           foreach ($plugin in @("browser", "chrome", "computer-use")) {
             if ($config -notmatch "\[plugins\.\`"$plugin@openai-bundled\`"\]") { exit 1 }

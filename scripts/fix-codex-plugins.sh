@@ -54,7 +54,7 @@ confirm_execution() {
     if [[ "${CODEX_PLUGIN_REPAIR_YES:-}" == "1" ]]; then
       return
     fi
-    printf "Type yes to continue, or no to exit: "
+    printf "Type yes/y to continue, or no/n to exit: "
   else
     echo "Codex 插件修复脚本"
     echo "这个脚本将执行以下操作："
@@ -79,17 +79,19 @@ confirm_execution() {
     if [[ "${CODEX_PLUGIN_REPAIR_YES:-}" == "1" ]]; then
       return
     fi
-    printf "输入 yes 继续执行，输入 no 退出: "
+    printf "输入 yes 或 y 继续执行，输入 no 或 n 退出: "
   fi
   read -r answer
-  if [[ "$answer" != "yes" ]]; then
-    if [[ "$LANGUAGE" == "en-US" ]]; then
-      echo "Cancelled. No changes were made."
-    else
-      echo "已取消，未做任何修改。"
-    fi
-    exit 0
+  normalized_answer="$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]')"
+  case "$normalized_answer" in
+    yes|y) return ;;
+  esac
+  if [[ "$LANGUAGE" == "en-US" ]]; then
+    echo "Cancelled. No changes were made."
+  else
+    echo "已取消，未做任何修改。"
   fi
+  exit 0
 }
 
 confirm_execution
@@ -452,21 +454,21 @@ PY
 
 echo
 echo "修复完成。/ Repair complete."
-echo "下一步 / Next steps:"
+echo "后续建议（不是菜单选项，不需要输入数字） / Next steps (not a menu; do not type the numbers):"
 PLATFORM_NAME="${CODEX_PLUGIN_REPAIR_PLATFORM:-$(uname -s)}"
 case "$PLATFORM_NAME" in
   Darwin)
-    echo "1. 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
-    echo "If Codex Desktop is open, restart it once so it reloads config.toml."
+    echo "- 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
+    echo "- If Codex Desktop is open, restart it once so it reloads config.toml."
     ;;
   Linux)
-    echo "1. 请启动新的 Codex CLI 会话以重新加载 config.toml。"
-    echo "Start a new Codex CLI session so it reloads config.toml."
+    echo "- 请启动新的 Codex CLI 会话以重新加载 config.toml。"
+    echo "- Start a new Codex CLI session so it reloads config.toml."
     ;;
   *)
-    echo "1. 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
-    echo "Restart Codex or start a new Codex session so it reloads config.toml."
+    echo "- 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
+    echo "- Restart Codex or start a new Codex session so it reloads config.toml."
     ;;
 esac
-echo "2. 可运行 'codex mcp list' 检查工具是否出现。"
-echo "You can run 'codex mcp list' to check whether the tools appear."
+echo "- 可选：只有安装了 Codex CLI 且 'codex' 命令可用时，才运行 'codex mcp list' 检查工具是否出现。"
+echo "- Optional: run 'codex mcp list' only if Codex CLI is installed and the 'codex' command is available."
