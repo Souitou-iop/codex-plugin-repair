@@ -227,7 +227,7 @@ jobs:
           $outputPath = Join-Path $env:RUNNER_TEMP "failure-output.txt"
           $env:CODEX_HOME = $failHome
           $env:CODEX_PLUGIN_REPAIR_PLATFORM = "Linux"
-          & ./scripts/Fix-CodexPlugins.ps1 > $outputPath 2>&1
+          pwsh -NoProfile -File ./scripts/Fix-CodexPlugins.ps1 > $outputPath 2>&1
           if ($LASTEXITCODE -eq 0) {
             Get-Content -LiteralPath $outputPath
             exit 1
