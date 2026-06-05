@@ -9,12 +9,12 @@ Repair local Codex plugin state after Codex Desktop updates or restarts, especia
 
 ## Quick Repair
 
-Run the one-line command for your platform. The script backs up `~/.codex/config.toml` before repairing local plugin config and cache state.
+Run the one-line command for your platform. The script backs up `~/.codex/config.toml`, repairs local plugin config/cache state, and prints bilingual Chinese/English status messages when it finishes or hits a problem.
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 Fully quit and reopen Codex Desktop after the script finishes.
@@ -22,7 +22,7 @@ Fully quit and reopen Codex Desktop after the script finishes.
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/fix-codex-plugins.sh)
 ```
 
 Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.
@@ -139,11 +139,16 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 ## If It Still Fails
 
-The script prints a consistency check for every enabled plugin:
+The script prints a bilingual plugin coverage report. Use it to see which marketplaces are configured, which plugin caches exist, and which enabled plugins still need attention:
 
 ```text
-OK chrome@openai-bundled marketplace=True cache=True source=True
-MISSING example@marketplace marketplace=True cache=False source=False
+插件覆盖报告 / Plugin coverage report:
+Marketplaces / 插件市场:
+KNOWN openai-bundled table=true source=true cache=true
+UNKNOWN openai-unknown table=false source=false cache=true
+Enabled plugins / 已启用插件:
+OK chrome@openai-bundled marketplace=true source=true cache=true
+MISSING example@marketplace marketplace=true source=false cache=false
 ```
 
 Focus on these fields:

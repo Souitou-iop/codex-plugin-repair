@@ -9,12 +9,12 @@
 
 ## 快速修复
 
-急用时直接执行下面的一行命令。脚本会先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。
+急用时直接执行下面的一行命令。脚本会先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。执行完成或遇到问题时，终端会输出中英文提示。
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 执行后完全退出并重新打开 Codex Desktop。
@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scr
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.4/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -139,11 +139,16 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 ## 失败时看哪里
 
-脚本末尾会输出每个已启用插件的一致性检查：
+脚本末尾会输出中英文插件覆盖报告。你可以用它判断哪些 marketplace 已配置、哪些插件 cache 存在、哪些已启用插件还需要处理：
 
 ```text
-OK chrome@openai-bundled marketplace=True cache=True source=True
-MISSING example@marketplace marketplace=True cache=False source=False
+插件覆盖报告 / Plugin coverage report:
+Marketplaces / 插件市场:
+KNOWN openai-bundled table=true source=true cache=true
+UNKNOWN openai-unknown table=false source=false cache=true
+Enabled plugins / 已启用插件:
+OK chrome@openai-bundled marketplace=true source=true cache=true
+MISSING example@marketplace marketplace=true source=false cache=false
 ```
 
 重点看这三项：

@@ -33,6 +33,9 @@ jobs:
 
           [plugins."codex-security@openai-curated"]
           enabled = true
+
+          [plugins."mystery@openai-unknown"]
+          enabled = true
           EOF
 
           for plugin in browser chrome computer-use; do
@@ -47,13 +50,19 @@ jobs:
           mkdir -p "$root/.codex-plugin"
           printf '{"name":"codex-security","version":"2.0.0"}\n' > "$root/.codex-plugin/plugin.json"
 
+          root="$CODEX_HOME/plugins/cache/openai-unknown/mystery/9.9.9"
+          mkdir -p "$root/.codex-plugin"
+          printf '{"name":"mystery","version":"9.9.9"}\n' > "$root/.codex-plugin/plugin.json"
+
           echo "CODEX_HOME=$CODEX_HOME" >> "$GITHUB_ENV"
 
       - name: Run repair script
         env:
           CODEX_PLUGIN_REPAIR_PLATFORM: ${{ matrix.platform }}
           CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
-        run: ./scripts/fix-codex-plugins.sh
+        run: |
+          set -euo pipefail
+          ./scripts/fix-codex-plugins.sh 2>&1 | tee "$RUNNER_TEMP/repair-output.txt"
 
       - name: Verify repaired state
         shell: bash
@@ -61,7 +70,11 @@ jobs:
           set -euo pipefail
           test -f "$CODEX_HOME/config.toml"
           grep -q 'service_tier = "fast"' "$CODEX_HOME/config.toml"
+          grep -q '插件覆盖报告 / Plugin coverage report:' "$RUNNER_TEMP/repair-output.txt"
+          grep -q '修复完成。/ Repair complete.' "$RUNNER_TEMP/repair-output.txt"
+          grep -q 'OK mystery@openai-unknown marketplace=false source=false cache=true' "$RUNNER_TEMP/repair-output.txt"
           test -d "$CODEX_HOME/plugins/cache/openai-curated/codex-security/2.0.0"
+          test -d "$CODEX_HOME/plugins/cache/openai-unknown/mystery/9.9.9"
           if [[ "${{ matrix.platform }}" == "Darwin" ]]; then
             for plugin in browser chrome computer-use; do
               grep -q "\[plugins.\"$plugin@openai-bundled\"\]" "$CODEX_HOME/config.toml"
@@ -97,6 +110,9 @@ jobs:
 
           [plugins."codex-security@openai-curated"]
           enabled = true
+
+          [plugins."mystery@openai-unknown"]
+          enabled = true
           '@ | Set-Content -LiteralPath (Join-Path $CodexHome "config.toml") -NoNewline
 
           foreach ($plugin in @("browser", "chrome", "computer-use")) {
@@ -126,6 +142,10 @@ jobs:
           New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
           '{"name":"codex-security","version":"2.0.0"}' | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
 
+          $root = Join-Path $CodexHome "plugins/cache/openai-unknown/mystery/9.9.9"
+          New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
+          '{"name":"mystery","version":"9.9.9"}' | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
+
           "CODEX_HOME=$CodexHome" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Run repair script
@@ -134,13 +154,18 @@ jobs:
           CODEX_PLUGIN_REPAIR_PLATFORM: Windows
           CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT: ${{ runner.temp }}/appx-bundled
           CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
-        run: ./scripts/Fix-CodexPlugins.ps1
+        run: |
+          ./scripts/Fix-CodexPlugins.ps1 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "repair-output.txt")
 
       - name: Verify repaired state
         shell: pwsh
         run: |
           $config = Get-Content -LiteralPath (Join-Path $env:CODEX_HOME "config.toml") -Raw
+          $output = Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "repair-output.txt") -Raw
           if ($config -notmatch 'service_tier = "fast"') { exit 1 }
+          if ($output -notmatch '插件覆盖报告 / Plugin coverage report:') { exit 1 }
+          if ($output -notmatch '修复完成。/ Repair complete.') { exit 1 }
+          if ($output -notmatch 'OK mystery@openai-unknown marketplace=false source=false cache=true') { exit 1 }
           foreach ($plugin in @("browser", "chrome", "computer-use")) {
             if ($config -notmatch "\[plugins\.\`"$plugin@openai-bundled\`"\]") { exit 1 }
             $cache = Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/$plugin/1.0.0"
@@ -159,3 +184,5 @@ jobs:
           if ($config -match "bak-plugin-repair") { exit 1 }
           $curated = Join-Path $env:CODEX_HOME "plugins/cache/openai-curated/codex-security/2.0.0"
           if (-not (Test-Path -LiteralPath $curated -PathType Container)) { exit 1 }
+          $unknown = Join-Path $env:CODEX_HOME "plugins/cache/openai-unknown/mystery/9.9.9"
+          if (-not (Test-Path -LiteralPath $unknown -PathType Container)) { exit 1 }

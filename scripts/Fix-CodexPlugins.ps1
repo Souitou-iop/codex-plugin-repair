@@ -11,12 +11,18 @@ $Stamp = Get-Date -Format "yyyyMMddHHmmss"
 $Backup = "$Config.bak-plugin-repair-$Stamp"
 
 if (-not (Test-Path -LiteralPath $Config -PathType Leaf)) {
-    Write-Error "Missing Codex config: $Config"
+    Write-Error "错误：找不到 Codex 配置文件。 / Error: missing Codex config: $Config"
     exit 1
 }
 
 Copy-Item -LiteralPath $Config -Destination $Backup -Force
-Write-Host "Backed up config to: $Backup"
+Write-Host "已备份配置文件。/ Backed up config to: $Backup"
+
+function Format-Bool {
+    param([bool]$Value)
+    if ($Value) { return "true" }
+    return "false"
+}
 
 function Convert-ToTomlPath {
     param([string]$Path)
@@ -49,24 +55,24 @@ function Get-WindowsBundledSourceRoot {
         if (Test-Path -LiteralPath $SourceOverride -PathType Container) {
             return (Resolve-Path -LiteralPath $SourceOverride).Path
         }
-        Write-Host "Windows bundled source override missing: $SourceOverride"
+        Write-Host "Windows bundled 源覆盖路径缺失 / Windows bundled source override missing: $SourceOverride"
         return $null
     }
 
     if (-not (Get-Command Get-AppxPackage -ErrorAction SilentlyContinue)) {
-        Write-Host "Get-AppxPackage is unavailable; keeping existing bundled marketplace source."
+        Write-Host "Get-AppxPackage 不可用，将保留现有 bundled marketplace 源 / Get-AppxPackage is unavailable; keeping existing bundled marketplace source."
         return $null
     }
 
     $Package = Get-AppxPackage -Name $PackageName | Sort-Object Version -Descending | Select-Object -First 1
     if (-not $Package) {
-        Write-Host "Could not find AppX package: $PackageName"
+        Write-Host "找不到 AppX 包 / Could not find AppX package: $PackageName"
         return $null
     }
 
     $Source = Join-Path $Package.InstallLocation "app/resources/plugins/openai-bundled"
     if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
-        Write-Host "Could not find bundled plugin source: $Source"
+        Write-Host "找不到 bundled 插件源 / Could not find bundled plugin source: $Source"
         return $null
     }
 
@@ -88,13 +94,13 @@ function Sync-WindowsBundledMarketplace {
     if (Test-Path -LiteralPath $Destination) {
         $BackupPath = "$Destination.bak-plugin-repair-$Stamp"
         Move-Item -LiteralPath $Destination -Destination $BackupPath -Force
-        Write-Host "Backed up bundled marketplace to: $BackupPath"
+        Write-Host "已备份 bundled marketplace / Backed up bundled marketplace to: $BackupPath"
     }
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
         Copy-Item -LiteralPath $_.FullName -Destination $Destination -Recurse -Force
     }
-    Write-Host "Synced Windows bundled marketplace: $Source -> $Destination"
+    Write-Host "已同步 Windows bundled marketplace / Synced Windows bundled marketplace: $Source -> $Destination"
     return $true
 }
 
@@ -217,7 +223,7 @@ function Update-LatestLink {
         Remove-Item -LiteralPath $Latest -Recurse -Force
     }
     New-Item -ItemType Junction -Path $Latest -Target $Target | Out-Null
-    Write-Host "Updated latest link: $Latest -> $Target"
+    Write-Host "已更新 latest 链接 / Updated latest link: $Latest -> $Target"
 }
 
 function Test-PluginCacheReady {
@@ -247,7 +253,7 @@ function Test-PluginCacheReady {
     $Missing = @($Required | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($Missing.Count -gt 0) {
         foreach ($MissingFile in $Missing) {
-            Write-Host "Missing cache file for ${PluginName}: $MissingFile"
+            Write-Host "缓存文件缺失 / Missing cache file for ${PluginName}: $MissingFile"
         }
         return $false
     }
@@ -265,7 +271,7 @@ function Copy-Plugin {
     $DefaultSource = if ($KnownMarketplaces.ContainsKey($Marketplace)) { $KnownMarketplaces[$Marketplace] } else { "" }
     $SourceMarket = Get-MarketplaceSource -Text $CurrentText -Name $Marketplace -Default $DefaultSource
     if (-not $SourceMarket) {
-        Write-Host "Skip ${PluginName}@${Marketplace}: marketplace source is unknown"
+        Write-Host "跳过 ${PluginName}@${Marketplace}：marketplace 源未知 / Skip ${PluginName}@${Marketplace}: marketplace source is unknown"
         return $false
     }
 
@@ -275,26 +281,26 @@ function Copy-Plugin {
 
     if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
         if ($Existing.Count -gt 0) {
-            Write-Host "Cache already valid for ${PluginName}@${Marketplace}: $($Existing[-1].FullName)"
+            Write-Host "缓存已有效 / Cache already valid for ${PluginName}@${Marketplace}: $($Existing[-1].FullName)"
             if ($Marketplace -eq "openai-bundled") {
                 Update-LatestLink -Base $DestBase -Target $Existing[-1].FullName
             }
             return $true
         }
-        Write-Host "Skip ${PluginName}@${Marketplace}: marketplace plugin source missing: $Source"
+        Write-Host "跳过 ${PluginName}@${Marketplace}：marketplace 插件源缺失 / Skip ${PluginName}@${Marketplace}: marketplace plugin source missing: $Source"
         return $false
     }
 
     $Version = Get-PluginVersion $Source
     if (-not $Version) {
         if ($Existing.Count -gt 0) {
-            Write-Host "Cache already valid for ${PluginName}@${Marketplace}: $($Existing[-1].FullName)"
+            Write-Host "缓存已有效 / Cache already valid for ${PluginName}@${Marketplace}: $($Existing[-1].FullName)"
             if ($Marketplace -eq "openai-bundled") {
                 Update-LatestLink -Base $DestBase -Target $Existing[-1].FullName
             }
             return $true
         }
-        Write-Host "Skip ${PluginName}@${Marketplace}: missing version in $Source/.codex-plugin/plugin.json"
+        Write-Host "跳过 ${PluginName}@${Marketplace}：plugin.json 缺少版本号 / Skip ${PluginName}@${Marketplace}: missing version in $Source/.codex-plugin/plugin.json"
         return $false
     }
 
@@ -302,17 +308,17 @@ function Copy-Plugin {
     New-Item -ItemType Directory -Path $DestBase -Force | Out-Null
     if (Test-Path -LiteralPath $Dest -PathType Container) {
         if (Test-PluginCacheReady -PluginName $PluginName -PluginRoot $Dest -PlatformName $SystemName) {
-            Write-Host "Cache exists for ${PluginName}@${Marketplace}: $Dest"
+            Write-Host "缓存已存在 / Cache exists for ${PluginName}@${Marketplace}: $Dest"
         } else {
             $BackupDest = "$Dest.bak-plugin-repair-$Stamp"
             Move-Item -LiteralPath $Dest -Destination $BackupDest -Force
-            Write-Host "Backed up incomplete cache for ${PluginName}@${Marketplace}: $BackupDest"
+            Write-Host "已备份残缺缓存 / Backed up incomplete cache for ${PluginName}@${Marketplace}: $BackupDest"
             Copy-Item -LiteralPath $Source -Destination $Dest -Recurse
-            Write-Host "Rebuilt ${PluginName}@${Marketplace} -> $Dest"
+            Write-Host "已重建插件缓存 / Rebuilt ${PluginName}@${Marketplace} -> $Dest"
         }
     } else {
         Copy-Item -LiteralPath $Source -Destination $Dest -Recurse
-        Write-Host "Copied ${PluginName}@${Marketplace} -> $Dest"
+        Write-Host "已复制插件 / Copied ${PluginName}@${Marketplace} -> $Dest"
     }
 
     if ($Marketplace -eq "openai-bundled") {
@@ -353,6 +359,111 @@ function Set-NotifyHelper {
     return $NotifyLine + "`n" + $Text
 }
 
+function Get-MarketplaceTables {
+    param([string]$Text)
+    $Tables = @{}
+    foreach ($Match in [regex]::Matches($Text, '(?ms)^\[marketplaces\.([^\]]+)\]\r?\n(.*?)(?=^\[|\z)')) {
+        $Tables[$Match.Groups[1].Value] = $Match.Groups[2].Value
+    }
+    return $Tables
+}
+
+function Get-PluginTables {
+    param([string]$Text)
+    $Pattern = '(?ms)^\[plugins\."([^@"]+)@([^"]+)"\]\r?\n(.*?)(?=^\[|\z)'
+    foreach ($Match in [regex]::Matches($Text, $Pattern)) {
+        [pscustomobject]@{
+            Name = $Match.Groups[1].Value
+            Marketplace = $Match.Groups[2].Value
+            Enabled = ($Match.Groups[3].Value -match "(?m)^enabled\s*=\s*true\s*$")
+        }
+    }
+}
+
+function Get-CacheMarketplaces {
+    $CacheRoot = Join-Path $CodexHome "plugins/cache"
+    if (-not (Test-Path -LiteralPath $CacheRoot -PathType Container)) {
+        return @()
+    }
+    return @(Get-ChildItem -LiteralPath $CacheRoot -Directory | ForEach-Object { $_.Name })
+}
+
+function Test-PluginCacheExists {
+    param([string]$Base)
+    return (Get-CachedPluginDirs $Base).Count -gt 0
+}
+
+function Get-SourcePluginNames {
+    param([string]$SourceRoot)
+    $PluginsRoot = Join-Path $SourceRoot "plugins"
+    if (-not (Test-Path -LiteralPath $PluginsRoot -PathType Container)) {
+        return @()
+    }
+    return @(Get-ChildItem -LiteralPath $PluginsRoot -Directory | Where-Object {
+        Test-Path -LiteralPath (Join-Path $_.FullName ".codex-plugin/plugin.json") -PathType Leaf
+    } | ForEach-Object { $_.Name } | Sort-Object)
+}
+
+function Write-PluginCoverageReport {
+    param(
+        [string]$Text,
+        [hashtable]$KnownMarketplaces
+    )
+
+    Write-Host ""
+    Write-Host "插件覆盖报告 / Plugin coverage report:"
+    $MarketplaceTables = Get-MarketplaceTables $Text
+    $CacheMarkets = @(Get-CacheMarketplaces)
+    $AllMarkets = @($MarketplaceTables.Keys + $CacheMarkets + $KnownMarketplaces.Keys | Sort-Object -Unique)
+
+    Write-Host "Marketplaces / 插件市场:"
+    foreach ($Market in $AllMarkets) {
+        $DefaultSource = if ($KnownMarketplaces.ContainsKey($Market)) { $KnownMarketplaces[$Market] } else { "" }
+        $SourceMarket = Get-MarketplaceSource -Text $Text -Name $Market -Default $DefaultSource
+        $HasTable = $MarketplaceTables.ContainsKey($Market)
+        $HasSource = $SourceMarket -and (Test-Path -LiteralPath $SourceMarket -PathType Container)
+        $HasCache = $CacheMarkets -contains $Market
+        $Label = if ($KnownMarketplaces.ContainsKey($Market) -or $HasTable) { "KNOWN" } else { "UNKNOWN" }
+        Write-Host "$Label $Market table=$(Format-Bool $HasTable) source=$(Format-Bool $HasSource) cache=$(Format-Bool $HasCache)"
+    }
+
+    Write-Host "Enabled plugins / 已启用插件:"
+    foreach ($Plugin in Get-PluginTables $Text) {
+        if (-not $Plugin.Enabled) { continue }
+        $Cache = Join-Path $CodexHome "plugins/cache/$($Plugin.Marketplace)/$($Plugin.Name)"
+        $DefaultSource = if ($KnownMarketplaces.ContainsKey($Plugin.Marketplace)) { $KnownMarketplaces[$Plugin.Marketplace] } else { "" }
+        $SourceMarket = Get-MarketplaceSource -Text $Text -Name $Plugin.Marketplace -Default $DefaultSource
+        $Source = if ($SourceMarket) { Join-Path $SourceMarket "plugins/$($Plugin.Name)" } else { "" }
+        $OkMarket = $MarketplaceTables.ContainsKey($Plugin.Marketplace)
+        $OkCache = Test-PluginCacheExists $Cache
+        $SourceExists = $Source -and (Test-Path -LiteralPath $Source -PathType Container)
+        $Status = if ($OkCache) { "OK" } else { "MISSING" }
+        Write-Host "$Status $($Plugin.Name)@$($Plugin.Marketplace) marketplace=$(Format-Bool $OkMarket) source=$(Format-Bool $SourceExists) cache=$(Format-Bool $OkCache)"
+    }
+
+    if ($env:CODEX_PLUGIN_REPAIR_VERBOSE_REPORT -eq "1") {
+        $EnabledIds = @{}
+        foreach ($Plugin in Get-PluginTables $Text) {
+            if ($Plugin.Enabled) { $EnabledIds["$($Plugin.Name)@$($Plugin.Marketplace)"] = $true }
+        }
+        Write-Host "Available but not enabled / 可用但未启用:"
+        $Found = 0
+        foreach ($Market in $AllMarkets) {
+            $DefaultSource = if ($KnownMarketplaces.ContainsKey($Market)) { $KnownMarketplaces[$Market] } else { "" }
+            $SourceMarket = Get-MarketplaceSource -Text $Text -Name $Market -Default $DefaultSource
+            if (-not ($SourceMarket -and (Test-Path -LiteralPath $SourceMarket -PathType Container))) { continue }
+            foreach ($Name in Get-SourcePluginNames $SourceMarket) {
+                $PluginId = "$Name@$Market"
+                if (-not $EnabledIds.ContainsKey($PluginId)) {
+                    Write-Host $PluginId
+                    $Found++
+                }
+            }
+        }
+        if ($Found -eq 0) { Write-Host "none / 无" }
+    }
+}
+
 $Text = Get-Content -LiteralPath $Config -Raw
 $Text = [regex]::Replace($Text, '(?m)^service_tier\s*=\s*"default"\s*$', 'service_tier = "fast"')
 
@@ -386,7 +497,7 @@ if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
         $Text = Set-PluginEnabled -Text $Text -PluginId $PluginId -Enabled $true
     }
 } else {
-    Write-Host "Platform detected: $DetectedPlatform. Skipping Desktop bundled plugin auto-enable."
+    Write-Host "检测到平台：$DetectedPlatform。跳过 Desktop bundled 插件自动启用。/ Platform detected: $DetectedPlatform. Skipping Desktop bundled plugin auto-enable."
 }
 
 Set-Content -LiteralPath $Config -Value $Text -NoNewline
@@ -405,18 +516,17 @@ if ($SystemName -eq "windows") {
             $Text = Get-Content -LiteralPath $Config -Raw
             $Text = Set-NotifyHelper -Text $Text -HelperPath $HelperPath
             Set-Content -LiteralPath $Config -Value $Text -NoNewline
-            Write-Host "Updated notify helper path: $HelperPath"
+            Write-Host "已更新 notify helper 路径 / Updated notify helper path: $HelperPath"
         } else {
-            Write-Host "Skip notify update: Computer Use helper missing: $HelperPath"
+            Write-Host "跳过 notify 更新：Computer Use helper 缺失 / Skip notify update: Computer Use helper missing: $HelperPath"
         }
     } else {
-        Write-Host "Skip notify update: Computer Use cache missing"
+        Write-Host "跳过 notify 更新：Computer Use 缓存缺失 / Skip notify update: Computer Use cache missing"
     }
 }
 
-Write-Host ""
-Write-Host "Enabled plugin consistency:"
 $FinalText = Get-Content -LiteralPath $Config -Raw
+Write-PluginCoverageReport -Text $FinalText -KnownMarketplaces $KnownMarketplaces
 $Markets = @{}
 foreach ($Match in [regex]::Matches($FinalText, '(?m)^\[marketplaces\.([^\]]+)\]')) {
     $Markets[$Match.Groups[1].Value] = $true
@@ -426,29 +536,31 @@ $Missing = @()
 foreach ($Plugin in Get-EnabledPlugins $FinalText) {
     $Cache = Join-Path $CodexHome "plugins/cache/$($Plugin.Marketplace)/$($Plugin.Name)"
     $OkMarket = $Markets.ContainsKey($Plugin.Marketplace)
-    $OkCache = Test-Path -LiteralPath $Cache -PathType Container
+    $OkCache = Test-PluginCacheExists $Cache
     $DefaultSource = if ($KnownMarketplaces.ContainsKey($Plugin.Marketplace)) { $KnownMarketplaces[$Plugin.Marketplace] } else { "" }
     $SourceMarket = Get-MarketplaceSource -Text $FinalText -Name $Plugin.Marketplace -Default $DefaultSource
     $Source = if ($SourceMarket) { Join-Path $SourceMarket "plugins/$($Plugin.Name)" } else { "" }
     $SourceExists = $Source -and (Test-Path -LiteralPath $Source -PathType Container)
-    $Status = if ($OkMarket -and $OkCache) { "OK" } else { "MISSING" }
-    Write-Host "$Status $($Plugin.Name)@$($Plugin.Marketplace) marketplace=$OkMarket cache=$OkCache source=$SourceExists"
+    $Status = if ($OkCache) { "OK" } else { "MISSING" }
     if ($Status -ne "OK") {
         $Missing += "$($Plugin.Name)@$($Plugin.Marketplace)"
     }
 }
 
 if ($Missing.Count -gt 0) {
-    Write-Error ("Still missing: " + ($Missing -join ", "))
+    Write-Error ("仍有插件缺失 / Still missing: " + ($Missing -join ", "))
     exit 2
 }
 
 Write-Host ""
-Write-Host "Repair complete."
+Write-Host "修复完成。/ Repair complete."
 if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
+    Write-Host "如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
     Write-Host "If Codex Desktop is open, restart it once so it reloads config.toml."
 } elseif ($SystemName -eq "linux") {
+    Write-Host "请启动新的 Codex CLI 会话以重新加载 config.toml。"
     Write-Host "Start a new Codex CLI session so it reloads config.toml."
 } else {
+    Write-Host "请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
     Write-Host "Restart Codex or start a new Codex session so it reloads config.toml."
 }

@@ -7,12 +7,13 @@ STAMP="$(date +%Y%m%d%H%M%S)"
 BACKUP="$CONFIG.bak-plugin-repair-$STAMP"
 
 if [[ ! -f "$CONFIG" ]]; then
-  echo "Missing Codex config: $CONFIG" >&2
+  echo "错误：找不到 Codex 配置文件。" >&2
+  echo "Error: missing Codex config: $CONFIG" >&2
   exit 1
 fi
 
 cp "$CONFIG" "$BACKUP"
-echo "Backed up config to: $BACKUP"
+echo "已备份配置文件。/ Backed up config to: $BACKUP"
 
 python3 - "$CODEX_HOME" "$CONFIG" <<'PY'
 import json
@@ -103,6 +104,86 @@ known_marketplaces = {
     "openai-curated": curated_source,
     "openai-primary-runtime": primary_runtime_source,
 }
+verbose_report = os.environ.get("CODEX_PLUGIN_REPAIR_VERBOSE_REPORT") == "1"
+
+def yn(value):
+    return "true" if value else "false"
+
+def marketplace_tables(src):
+    return dict(re.findall(r'^\[marketplaces\.([^\]]+)\]\n(.*?)(?=^\[|\Z)', src, re.M | re.S))
+
+def plugin_tables(src):
+    for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', src, re.M | re.S):
+        name, market, body = m.group(1), m.group(2), m.group(3)
+        enabled = bool(re.search(r'^enabled\s*=\s*true\s*$', body, re.M))
+        yield name, market, enabled
+
+def source_plugin_names(source_root):
+    plugins_root = pathlib.Path(source_root) / "plugins"
+    if not plugins_root.exists():
+        return set()
+    return {
+        p.name for p in plugins_root.iterdir()
+        if p.is_dir() and (p / ".codex-plugin" / "plugin.json").exists()
+    }
+
+def cache_marketplaces():
+    cache_root = codex_home / "plugins" / "cache"
+    if not cache_root.exists():
+        return set()
+    return {p.name for p in cache_root.iterdir() if p.is_dir()}
+
+def has_plugin_cache(dst_base):
+    if not dst_base.exists():
+        return False
+    return any(
+        p.is_dir() and not p.is_symlink() and (p / ".codex-plugin" / "plugin.json").exists()
+        for p in dst_base.iterdir()
+    )
+
+def print_plugin_coverage_report(cfg):
+    print("\n插件覆盖报告 / Plugin coverage report:")
+    markets = marketplace_tables(cfg)
+    cache_markets = cache_marketplaces()
+    all_markets = sorted(set(markets) | cache_markets | set(known_marketplaces))
+
+    print("Marketplaces / 插件市场:")
+    for market in all_markets:
+        source = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
+        has_table = market in markets
+        has_source = bool(str(source)) and source.exists()
+        has_cache = market in cache_markets
+        label = "KNOWN" if market in known_marketplaces or has_table else "UNKNOWN"
+        print(f"{label} {market} table={yn(has_table)} source={yn(has_source)} cache={yn(has_cache)}")
+
+    print("Enabled plugins / 已启用插件:")
+    for name, market, enabled in plugin_tables(cfg):
+        if not enabled:
+            continue
+        cache = codex_home / "plugins" / "cache" / market / name
+        source_market = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
+        source = source_market / "plugins" / name if str(source_market) else None
+        ok_market = market in markets
+        ok_cache = has_plugin_cache(cache)
+        source_exists = bool(source and source.exists())
+        status = "OK" if ok_cache else "MISSING"
+        print(f"{status} {name}@{market} marketplace={yn(ok_market)} source={yn(source_exists)} cache={yn(ok_cache)}")
+
+    if verbose_report:
+        enabled_ids = {f"{name}@{market}" for name, market, enabled in plugin_tables(cfg) if enabled}
+        print("Available but not enabled / 可用但未启用:")
+        found = 0
+        for market in all_markets:
+            source = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
+            if not str(source) or not source.exists():
+                continue
+            for name in sorted(source_plugin_names(source)):
+                plugin_id = f"{name}@{market}"
+                if plugin_id not in enabled_ids:
+                    print(plugin_id)
+                    found += 1
+        if found == 0:
+            print("none / 无")
 
 text = ensure_marketplace(text, "openai-bundled", bundled_source)
 if pathlib.Path(curated_source, ".agents", "plugins", "marketplace.json").exists():
@@ -118,7 +199,7 @@ if system_name == "darwin":
     ):
         text = set_plugin_enabled(text, plugin_id, True)
 else:
-    print(f"Platform detected: {detected_platform}. Skipping macOS Desktop bundled plugin auto-enable.")
+    print(f"检测到平台：{detected_platform}。跳过 macOS Desktop bundled 插件自动启用。/ Platform detected: {detected_platform}. Skipping macOS Desktop bundled plugin auto-enable.")
 
 config_path.write_text(text)
 
@@ -145,12 +226,12 @@ def update_latest_link(dst_base, target):
         else:
             latest.unlink()
     latest.symlink_to(target)
-    print(f"Updated latest link: {latest} -> {target}")
+    print(f"已更新 latest 链接 / Updated latest link: {latest} -> {target}")
 
 def copy_plugin(marketplace, plugin_name):
     src_market = get_marketplace_source(config_path.read_text(), marketplace, known_marketplaces.get(marketplace, ""))
     if not str(src_market):
-        print(f"Skip {plugin_name}@{marketplace}: marketplace source is unknown")
+        print(f"跳过 {plugin_name}@{marketplace}：marketplace 源未知 / Skip {plugin_name}@{marketplace}: marketplace source is unknown")
         return False
 
     src = src_market / "plugins" / plugin_name
@@ -158,30 +239,30 @@ def copy_plugin(marketplace, plugin_name):
     existing = cached_plugin_dirs(dst_base)
     if not src.exists():
         if existing:
-            print(f"Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
+            print(f"缓存已有效 / Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
             if marketplace == "openai-bundled":
                 update_latest_link(dst_base, existing[-1])
             return True
-        print(f"Skip {plugin_name}@{marketplace}: marketplace plugin source missing: {src}")
+        print(f"跳过 {plugin_name}@{marketplace}：marketplace 插件源缺失 / Skip {plugin_name}@{marketplace}: marketplace plugin source missing: {src}")
         return False
 
     version = plugin_version(src)
     if not version:
         if existing:
-            print(f"Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
+            print(f"缓存已有效 / Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
             if marketplace == "openai-bundled":
                 update_latest_link(dst_base, existing[-1])
             return True
-        print(f"Skip {plugin_name}@{marketplace}: missing version in {src / '.codex-plugin/plugin.json'}")
+        print(f"跳过 {plugin_name}@{marketplace}：plugin.json 缺少版本号 / Skip {plugin_name}@{marketplace}: missing version in {src / '.codex-plugin/plugin.json'}")
         return False
 
     dst = dst_base / version
     dst_base.mkdir(parents=True, exist_ok=True)
     if dst.exists():
-        print(f"Cache exists for {plugin_name}@{marketplace}: {dst}")
+        print(f"缓存已存在 / Cache exists for {plugin_name}@{marketplace}: {dst}")
     else:
         shutil.copytree(src, dst, symlinks=True)
-        print(f"Copied {plugin_name}@{marketplace} -> {dst}")
+        print(f"已复制插件 / Copied {plugin_name}@{marketplace} -> {dst}")
 
     if marketplace == "openai-bundled":
         update_latest_link(dst_base, dst)
@@ -197,8 +278,8 @@ def enabled_plugins(src):
 for name, market in enabled_plugins(config_path.read_text()):
     copy_plugin(market, name)
 
-print("\nEnabled plugin consistency:")
 cfg = config_path.read_text()
+print_plugin_coverage_report(cfg)
 markets = set(re.findall(r'^\[marketplaces\.([^\]]+)\]', cfg, re.M))
 missing = []
 for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', cfg, re.M | re.S):
@@ -207,31 +288,33 @@ for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', cfg, 
         continue
     cache = codex_home / "plugins" / "cache" / market / name
     ok_market = market in markets
-    ok_cache = cache.exists()
+    ok_cache = has_plugin_cache(cache)
     src_market = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
     src = src_market / "plugins" / name if str(src_market) else None
     source_exists = bool(src and src.exists())
-    status = "OK" if ok_market and ok_cache else "MISSING"
-    print(f"{status} {name}@{market} marketplace={ok_market} cache={ok_cache} source={source_exists}")
+    status = "OK" if ok_cache else "MISSING"
     if status != "OK":
         missing.append(f"{name}@{market}")
 
 if missing:
-    print("\nStill missing: " + ", ".join(missing), file=sys.stderr)
+    print("\n仍有插件缺失 / Still missing: " + ", ".join(missing), file=sys.stderr)
     sys.exit(2)
 PY
 
 echo
-echo "Repair complete."
+echo "修复完成。/ Repair complete."
 PLATFORM_NAME="${CODEX_PLUGIN_REPAIR_PLATFORM:-$(uname -s)}"
 case "$PLATFORM_NAME" in
   Darwin)
+    echo "如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
     echo "If Codex Desktop is open, restart it once so it reloads config.toml."
     ;;
   Linux)
+    echo "请启动新的 Codex CLI 会话以重新加载 config.toml。"
     echo "Start a new Codex CLI session so it reloads config.toml."
     ;;
   *)
+    echo "请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
     echo "Restart Codex or start a new Codex session so it reloads config.toml."
     ;;
 esac

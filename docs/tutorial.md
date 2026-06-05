@@ -36,7 +36,7 @@ If Codex Desktop is not installed as the normal AppX package, provide the bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-The script creates a timestamped backup of `~/.codex/config.toml` before editing.
+The script creates a timestamped backup of `~/.codex/config.toml` before editing. Completion and problem messages are printed in both Chinese and English.
 
 ## 3. Restart Codex Desktop
 
@@ -87,7 +87,13 @@ If Chrome still cannot connect, rerun the Chrome plugin setup flow from Codex De
 
 ## 6. What To Do If It Still Fails
 
-Check the script output. If an enabled plugin cannot be repaired, it will print a `MISSING` line. The most important fields are:
+Check the bilingual plugin coverage report at the end of the script output. If an enabled plugin cannot be repaired, it will print a `MISSING` line. The most important fields are:
+
+```text
+插件覆盖报告 / Plugin coverage report:
+Enabled plugins / 已启用插件:
+MISSING example@marketplace marketplace=true source=false cache=false
+```
 
 - `marketplace=false`: `config.toml` does not contain that marketplace.
 - `cache=false`: persistent cache is missing.

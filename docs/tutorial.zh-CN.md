@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-脚本会先给 `~/.codex/config.toml` 创建带时间戳的备份，再进行修改。
+脚本会先给 `~/.codex/config.toml` 创建带时间戳的备份，再进行修改。执行完成或遇到问题时，终端会输出中英文提示。
 
 ## 3. 重启 Codex Desktop
 
@@ -87,7 +87,13 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 ## 6. 如果仍然失败
 
-看脚本输出。如果某个已启用插件无法修复，脚本会输出 `MISSING` 行。重点看这些字段：
+看脚本末尾的中英文插件覆盖报告。如果某个已启用插件无法修复，脚本会输出 `MISSING` 行。重点看这些字段：
+
+```text
+插件覆盖报告 / Plugin coverage report:
+Enabled plugins / 已启用插件:
+MISSING example@marketplace marketplace=true source=false cache=false
+```
 
 - `marketplace=false`：`config.toml` 里没有对应 marketplace。
 - `cache=false`：持久 cache 缺失。
