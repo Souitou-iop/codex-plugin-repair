@@ -13,7 +13,7 @@ if ($env:CODEX_PLUGIN_REPAIR_YES -eq "1") {
 }
 
 $Config = Join-Path $CodexHome "config.toml"
-$Stamp = Get-Date -Format "yyyyMMddHHmmss"
+$Stamp = "$(Get-Date -Format "yyyyMMddHHmmss")-$PID"
 $Backup = "$Config.bak-plugin-repair-$Stamp"
 $Log = Join-Path $CodexHome "codex-plugin-repair-diagnostics-$Stamp.log"
 
@@ -384,13 +384,22 @@ function Get-PluginVersion {
 }
 
 function Get-CachedPluginDirs {
-    param([string]$Base)
+    param(
+        [string]$Base,
+        [string]$PluginName = "",
+        [string]$PlatformName = $SystemName
+    )
     if (-not (Test-Path -LiteralPath $Base -PathType Container)) {
         return @()
     }
     return @(Get-ChildItem -LiteralPath $Base -Directory | Where-Object {
-        $_.Name -ne "latest" -and $_.Name -notlike "*.bak-plugin-repair-*" -and -not ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -and
-            (Test-Path -LiteralPath (Join-Path $_.FullName ".codex-plugin/plugin.json") -PathType Leaf)
+        if ($_.Name -eq "latest" -or $_.Name -like "*.bak-plugin-repair-*" -or ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+            $false
+        } elseif ($PluginName) {
+            Test-PluginCacheReady -PluginName $PluginName -PluginRoot $_.FullName -PlatformName $PlatformName
+        } else {
+            Test-Path -LiteralPath (Join-Path $_.FullName ".codex-plugin/plugin.json") -PathType Leaf
+        }
     } | Sort-Object FullName)
 }
 
@@ -402,7 +411,12 @@ function Update-LatestLink {
 
     $Latest = Join-Path $Base "latest"
     if (Test-Path -LiteralPath $Latest) {
-        Remove-Item -LiteralPath $Latest -Recurse -Force
+        $LatestItem = Get-Item -LiteralPath $Latest -Force
+        if ($LatestItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            $LatestItem.Delete()
+        } else {
+            Remove-Item -LiteralPath $Latest -Recurse -Force
+        }
     }
     New-Item -ItemType Junction -Path $Latest -Target $Target | Out-Null
     Write-Host "已更新 latest 链接 / Updated latest link: $Latest -> $Target"
@@ -459,7 +473,7 @@ function Copy-Plugin {
 
     $Source = Join-Path $SourceMarket "plugins/$PluginName"
     $DestBase = Join-Path $CodexHome "plugins/cache/$Marketplace/$PluginName"
-    $Existing = Get-CachedPluginDirs $DestBase
+    $Existing = Get-CachedPluginDirs -Base $DestBase -PluginName $PluginName -PlatformName $SystemName
 
     if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
         if ($Existing.Count -gt 0) {
@@ -587,8 +601,12 @@ function Get-CacheMarketplaces {
 }
 
 function Test-PluginCacheExists {
-    param([string]$Base)
-    return (Get-CachedPluginDirs $Base).Count -gt 0
+    param(
+        [string]$Base,
+        [string]$PluginName = "",
+        [string]$PlatformName = $SystemName
+    )
+    return (Get-CachedPluginDirs -Base $Base -PluginName $PluginName -PlatformName $PlatformName).Count -gt 0
 }
 
 function Get-SourcePluginNames {
@@ -645,7 +663,7 @@ function Get-PluginCoverageReportLines {
         $SourceMarket = Get-MarketplaceSource -Text $Text -Name $Plugin.Marketplace -Default $DefaultSource
         $Source = if ($SourceMarket) { Join-Path $SourceMarket "plugins/$($Plugin.Name)" } else { "" }
         $OkMarket = $MarketplaceTables.ContainsKey($Plugin.Marketplace)
-        $OkCache = Test-PluginCacheExists $Cache
+        $OkCache = Test-PluginCacheExists -Base $Cache -PluginName $Plugin.Name -PlatformName $SystemName
         $SourceExists = $Source -and (Test-Path -LiteralPath $Source -PathType Container)
         $Status = if ($OkCache) { "OK" } else { "MISSING" }
         $Lines.Add("$Status $($Plugin.Name)@$($Plugin.Marketplace) marketplace=$(Format-Bool $OkMarket) source=$(Format-Bool $SourceExists) cache=$(Format-Bool $OkCache)")
@@ -745,7 +763,7 @@ foreach ($Plugin in Get-EnabledPlugins (Get-Content -LiteralPath $Config -Raw)) 
 
 if ($SystemName -eq "windows") {
     $ComputerUseCacheBase = Join-Path $CodexHome "plugins/cache/openai-bundled/computer-use"
-    $ComputerUseCaches = Get-CachedPluginDirs $ComputerUseCacheBase
+    $ComputerUseCaches = Get-CachedPluginDirs -Base $ComputerUseCacheBase -PluginName "computer-use" -PlatformName $SystemName
     if ($ComputerUseCaches.Count -gt 0) {
         $ComputerUseRoot = $ComputerUseCaches[-1].FullName
         $HelperPath = Join-Path $ComputerUseRoot "node_modules/@oai/sky/bin/windows/codex-computer-use.exe"
@@ -775,7 +793,7 @@ $Missing = @()
 foreach ($Plugin in Get-EnabledPlugins $FinalText) {
     $Cache = Join-Path $CodexHome "plugins/cache/$($Plugin.Marketplace)/$($Plugin.Name)"
     $OkMarket = $Markets.ContainsKey($Plugin.Marketplace)
-    $OkCache = Test-PluginCacheExists $Cache
+    $OkCache = Test-PluginCacheExists -Base $Cache -PluginName $Plugin.Name -PlatformName $SystemName
     $DefaultSource = if ($KnownMarketplaces.ContainsKey($Plugin.Marketplace)) { $KnownMarketplaces[$Plugin.Marketplace] } else { "" }
     $SourceMarket = Get-MarketplaceSource -Text $FinalText -Name $Plugin.Marketplace -Default $DefaultSource
     $Source = if ($SourceMarket) { Join-Path $SourceMarket "plugins/$($Plugin.Name)" } else { "" }

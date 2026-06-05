@@ -9,20 +9,27 @@ Repair local Codex plugin state after Codex Desktop updates or restarts, especia
 
 ## Quick Repair
 
-Run the one-line command for your platform. The script first asks you to choose Chinese or English, explains exactly what it will do, and only starts after you type `yes` or `y`. It then shows guided progress steps, backs up `~/.codex/config.toml`, repairs local plugin config/cache state, and prints clear next steps when it finishes or hits a problem.
+Use these four steps:
+
+1. Fully quit Codex Desktop first.
+2. Copy and run the one-line command for your platform.
+3. When the script asks for language, type `1` for Chinese or `2` for English.
+4. After reading the explanation, type `y` or `yes` to repair. Type `n` or `no` to exit without changing files.
+
+The script backs up `~/.codex/config.toml` before changing anything. It does not delete browser data, edit browser profiles, or close/terminate apps automatically.
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.11/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
-Fully quit and reopen Codex Desktop after the script finishes.
+Reopen Codex Desktop after the script finishes.
 
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.11/scripts/fix-codex-plugins.sh)
 ```
 
 Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.
@@ -30,6 +37,8 @@ Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI se
 ## Inspect Before Running
 
 Use the clone-and-run flow if you want to read the script first, or if your environment blocks `curl | bash` / `irm | iex`.
+
+The Bash script requires `python3`. If `python3` is missing, the script stops and writes a diagnostic log instead of continuing.
 
 ### Windows
 
@@ -153,7 +162,7 @@ Focus on these fields:
 When the script exits with an error, it also writes a diagnostic log under `~/.codex/`, for example:
 
 ```text
-~/.codex/codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log
+~/.codex/codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS-PID.log
 ```
 
 Paste that log into Agents / Codex if you want help with the next troubleshooting step.
@@ -165,7 +174,7 @@ If Chrome still cannot connect on Windows, rerun the Chrome plugin setup flow fr
 Each run backs up the config file with a name like:
 
 ```text
-~/.codex/config.toml.bak-plugin-repair-YYYYMMDDHHMMSS
+~/.codex/config.toml.bak-plugin-repair-YYYYMMDDHHMMSS-PID
 ```
 
 On Windows, rebuilt bundled marketplace or incomplete cache directories are also moved aside with a `.bak-plugin-repair-...` suffix. To roll back, quit Codex Desktop and restore the relevant backup path.

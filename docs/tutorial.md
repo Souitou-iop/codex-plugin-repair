@@ -36,7 +36,7 @@ If Codex Desktop is not installed as the normal AppX package, provide the bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-The script asks for a language, explains the planned actions, and waits for `yes` before editing anything. It creates a timestamped backup of `~/.codex/config.toml` before editing, then prints guided progress steps, completion messages, and problem messages.
+The script asks for a language, explains the planned actions, and waits for `y` or `yes` before editing anything. It creates a timestamped backup of `~/.codex/config.toml` before editing, then prints guided progress steps, completion messages, and problem messages.
 
 ## 3. Restart Codex Desktop
 
@@ -87,6 +87,6 @@ MISSING example@marketplace marketplace=true source=false cache=false
 - `cache=false`: persistent cache is missing.
 - `source=false`: the marketplace source does not contain the plugin, so the script cannot copy it.
 
-On failure, the script writes a diagnostic log named like `codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log` under your Codex home directory. Paste that log into Agents / Codex if you want help with the next troubleshooting step.
+On failure, the script writes a diagnostic log named like `codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS-PID.log` under your Codex home directory. Paste that log into Agents / Codex if you want help with the next troubleshooting step.
 
 In that case, reinstall or refresh the affected marketplace, then run the script again.

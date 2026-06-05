@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-脚本会先让你选择语言，说明计划执行的操作，并等待你输入 `yes` 后才会开始修改。修改前会给 `~/.codex/config.toml` 创建带时间戳的备份；运行时会显示步骤进度，执行完成或遇到问题时，终端会输出提示。
+脚本会先让你选择语言，说明计划执行的操作，并等待你输入 `y` 或 `yes` 后才会开始修改。修改前会给 `~/.codex/config.toml` 创建带时间戳的备份；运行时会显示步骤进度，执行完成或遇到问题时，终端会输出提示。
 
 ## 3. 重启 Codex Desktop
 
@@ -87,6 +87,6 @@ MISSING example@marketplace marketplace=true source=false cache=false
 - `cache=false`：持久 cache 缺失。
 - `source=false`：marketplace 源里找不到这个插件，所以脚本无法复制。
 
-失败时，脚本会在 Codex home 目录下写入类似 `codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log` 的诊断日志。你可以把这份日志粘贴到 Agents / Codex 软件中，让它继续帮你排查下一步。
+失败时，脚本会在 Codex home 目录下写入类似 `codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS-PID.log` 的诊断日志。你可以把这份日志粘贴到 Agents / Codex 软件中，让它继续帮你排查下一步。
 
 遇到这种情况，先重新安装或刷新对应 marketplace，然后再运行一次脚本。

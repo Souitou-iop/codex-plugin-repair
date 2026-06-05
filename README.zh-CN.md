@@ -9,20 +9,27 @@
 
 ## 快速修复
 
-急用时直接执行下面的一行命令。脚本会先让你选择中文或英文，再说明将执行哪些操作；只有输入 `yes` 或 `y` 确认后才会开始修复。执行时会显示步骤指引，先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache；完成或遇到问题时，会给出清晰的下一步操作。
+按下面 4 步操作即可：
+
+1. 先完全退出 Codex Desktop。
+2. 复制并运行对应平台的一行命令。
+3. 看到语言选择时输入 `1` 使用中文，或输入 `2` 使用英文。
+4. 看完脚本说明后，输入 `y` 或 `yes` 开始修复；输入 `n` 或 `no` 会退出且不修改任何文件。
+
+脚本会先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。脚本不会删除浏览器数据，不会修改浏览器 Profile，也不会自动关闭应用或结束进程。
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.11/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
-执行后完全退出并重新打开 Codex Desktop。
+完成后重新打开 Codex Desktop。
 
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.11/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -30,6 +37,8 @@ macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会�
 ## 想先检查脚本内容
 
 如果你想先阅读脚本，或者公司环境不允许 `curl | bash` / `irm | iex`，用 clone 后运行的方式。
+
+Bash 版本需要本机有 `python3`。如果没有，脚本会停止并输出诊断日志，不会继续修改配置。
 
 ### Windows
 
@@ -153,7 +162,7 @@ MISSING example@marketplace marketplace=true source=false cache=false
 如果脚本以错误状态退出，还会在 `~/.codex/` 下写入诊断日志，例如：
 
 ```text
-~/.codex/codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS.log
+~/.codex/codex-plugin-repair-diagnostics-YYYYMMDDHHMMSS-PID.log
 ```
 
 你可以把这份日志粘贴到 Agents / Codex 软件中，让它继续帮你排查下一步。
@@ -165,7 +174,7 @@ MISSING example@marketplace marketplace=true source=false cache=false
 脚本每次运行都会备份配置文件，路径类似：
 
 ```text
-~/.codex/config.toml.bak-plugin-repair-YYYYMMDDHHMMSS
+~/.codex/config.toml.bak-plugin-repair-YYYYMMDDHHMMSS-PID
 ```
 
 Windows 下重建 bundled marketplace 或残缺 cache 时，也会给旧目录添加 `.bak-plugin-repair-...` 备份后缀。需要回退时，关闭 Codex Desktop，再把对应备份恢复到原路径。

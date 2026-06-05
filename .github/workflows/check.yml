@@ -74,6 +74,10 @@ jobs:
           mkdir -p "$root/.codex-plugin"
           printf '{"name":"mystery","version":"9.9.9"}\n' > "$root/.codex-plugin/plugin.json"
 
+          stale="$CODEX_HOME/plugins/cache/openai-bundled/browser/1.0.0"
+          mkdir -p "$stale"
+          printf 'incomplete\n' > "$stale/README.txt"
+
           echo "CODEX_HOME=$CODEX_HOME" >> "$GITHUB_ENV"
 
       - name: Run repair script
@@ -105,6 +109,8 @@ jobs:
               test -d "$CODEX_HOME/plugins/cache/openai-bundled/$plugin/1.0.0"
               test -L "$CODEX_HOME/plugins/cache/openai-bundled/$plugin/latest"
             done
+            test -f "$CODEX_HOME/plugins/cache/openai-bundled/browser/1.0.0/.codex-plugin/plugin.json"
+            compgen -G "$CODEX_HOME/plugins/cache/openai-bundled/browser/1.0.0.bak-plugin-repair-*" > /dev/null
           fi
 
       - name: Verify diagnostic log on failure

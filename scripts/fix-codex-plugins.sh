@@ -3,7 +3,7 @@ set -euo pipefail
 
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 CONFIG="$CODEX_HOME/config.toml"
-STAMP="$(date +%Y%m%d%H%M%S)"
+STAMP="$(date +%Y%m%d%H%M%S)-$$"
 BACKUP="$CONFIG.bak-plugin-repair-$STAMP"
 LOG="$CODEX_HOME/codex-plugin-repair-diagnostics-$STAMP.log"
 
@@ -126,11 +126,48 @@ if [[ ! -f "$CONFIG" ]]; then
   exit 1
 fi
 
+PYTHON_BIN="${CODEX_PLUGIN_REPAIR_PYTHON:-}"
+if [[ -z "$PYTHON_BIN" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+  else
+    echo "错误：找不到 python3，无法继续修复。" >&2
+    echo "Error: python3 was not found, so the repair cannot continue." >&2
+    if mkdir -p "$CODEX_HOME" 2>/dev/null; then
+      {
+        echo "Codex Plugin Repair diagnostic log"
+        echo "Codex 插件修复诊断日志"
+        echo "timestamp=$STAMP"
+        echo "codex_home=$CODEX_HOME"
+        echo "config=$CONFIG"
+        echo "error=missing python3"
+      } > "$LOG"
+      print_agents_help "$LOG"
+    fi
+    exit 1
+  fi
+elif ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  echo "错误：指定的 Python 不可用：$PYTHON_BIN" >&2
+  echo "Error: configured Python is not available: $PYTHON_BIN" >&2
+  if mkdir -p "$CODEX_HOME" 2>/dev/null; then
+    {
+      echo "Codex Plugin Repair diagnostic log"
+      echo "Codex 插件修复诊断日志"
+      echo "timestamp=$STAMP"
+      echo "codex_home=$CODEX_HOME"
+      echo "config=$CONFIG"
+      echo "error=unavailable Python: $PYTHON_BIN"
+    } > "$LOG"
+    print_agents_help "$LOG"
+  fi
+  exit 1
+fi
+
 echo "[2/5] 备份配置文件 / Backing up config..."
 cp "$CONFIG" "$BACKUP"
 echo "已备份配置文件。/ Backed up config to: $BACKUP"
 
-python3 - "$CODEX_HOME" "$CONFIG" "$LOG" "$BACKUP" "$STAMP" <<'PY'
+"$PYTHON_BIN" - "$CODEX_HOME" "$CONFIG" "$LOG" "$BACKUP" "$STAMP" <<'PY'
 import json
 import os
 import pathlib
@@ -145,7 +182,7 @@ config_path = pathlib.Path(sys.argv[2]).expanduser()
 log_path = pathlib.Path(sys.argv[3]).expanduser()
 backup_path = pathlib.Path(sys.argv[4]).expanduser()
 stamp = sys.argv[5]
-text = config_path.read_text()
+text = config_path.read_text(encoding="utf-8-sig")
 repair_timestamp = os.environ.get(
     "CODEX_PLUGIN_REPAIR_TIMESTAMP",
     datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -159,7 +196,7 @@ def plugin_table_exists(plugin_id):
 
 def set_plugin_enabled(src, plugin_id, enabled=True):
     block_re = re.compile(
-        rf'(^\[plugins\."{re.escape(plugin_id)}"\]\n)(.*?)(?=^\[|\Z)',
+        rf'(^\[plugins\."{re.escape(plugin_id)}"\]\r?\n)(.*?)(?=^\[|\Z)',
         re.M | re.S,
     )
     m = block_re.search(src)
@@ -182,14 +219,14 @@ def set_plugin_enabled(src, plugin_id, enabled=True):
     return src[:insert_at].rstrip() + "\n" + block + "\n" + src[insert_at:].lstrip()
 
 def ensure_marketplace(src, name, source):
-    block_re = re.compile(rf'(^\[marketplaces\.{re.escape(name)}\]\n)(.*?)(?=^\[|\Z)', re.M | re.S)
+    block_re = re.compile(rf'(^\[marketplaces\.{re.escape(name)}\]\r?\n)(.*?)(?=^\[|\Z)', re.M | re.S)
     m = block_re.search(src)
-    body = f'last_updated = "{repair_timestamp}"\nsource_type = "local"\nsource = "{source}"\n'
+    body = f'last_updated = {json.dumps(repair_timestamp)}\nsource_type = "local"\nsource = {json.dumps(str(source))}\n'
     if m:
         old = m.group(2)
         old = re.sub(r'^last_updated\s*=.*$', body.splitlines()[0], old, flags=re.M) if re.search(r'^last_updated\s*=', old, re.M) else body.splitlines()[0] + "\n" + old
         old = re.sub(r'^source_type\s*=.*$', 'source_type = "local"', old, flags=re.M) if re.search(r'^source_type\s*=', old, re.M) else old + 'source_type = "local"\n'
-        old = re.sub(r'^source\s*=.*$', f'source = "{source}"', old, flags=re.M) if re.search(r'^source\s*=', old, re.M) else old + f'source = "{source}"\n'
+        old = re.sub(r'^source\s*=.*$', f'source = {json.dumps(str(source))}', old, flags=re.M) if re.search(r'^source\s*=', old, re.M) else old + f'source = {json.dumps(str(source))}\n'
         return src[:m.start()] + m.group(1) + old + src[m.end():]
 
     first_market = re.search(r'^\[marketplaces\.', src, re.M)
@@ -197,12 +234,12 @@ def ensure_marketplace(src, name, source):
         return src.rstrip() + f'\n\n[marketplaces.{name}]\n{body}\n'
 
     # Keep openai-curated next to the other marketplace declarations.
-    market_blocks = list(re.finditer(r'^\[marketplaces\.[^\]]+\]\n.*?(?=^\[|\Z)', src, re.M | re.S))
+    market_blocks = list(re.finditer(r'^\[marketplaces\.[^\]]+\]\r?\n.*?(?=^\[|\Z)', src, re.M | re.S))
     insert_at = market_blocks[-1].end() if market_blocks else first_market.end()
     return src[:insert_at].rstrip() + f'\n\n[marketplaces.{name}]\n{body}' + "\n" + src[insert_at:].lstrip()
 
 def get_marketplace_source(src, name, default):
-    m = re.search(rf'^\[marketplaces\.{re.escape(name)}\]\n(.*?)(?=^\[|\Z)', src, re.M | re.S)
+    m = re.search(rf'^\[marketplaces\.{re.escape(name)}\]\r?\n(.*?)(?=^\[|\Z)', src, re.M | re.S)
     if not m:
         return pathlib.Path(default)
     s = re.search(r'^source\s*=\s*"([^"]+)"', m.group(1), re.M)
@@ -230,13 +267,26 @@ def yn(value):
     return "true" if value else "false"
 
 def marketplace_tables(src):
-    return dict(re.findall(r'^\[marketplaces\.([^\]]+)\]\n(.*?)(?=^\[|\Z)', src, re.M | re.S))
+    return dict(re.findall(r'^\[marketplaces\.([^\]]+)\]\r?\n(.*?)(?=^\[|\Z)', src, re.M | re.S))
 
 def plugin_tables(src):
-    for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', src, re.M | re.S):
+    for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\r?\n(.*?)(?=^\[|\Z)', src, re.M | re.S):
         name, market, body = m.group(1), m.group(2), m.group(3)
         enabled = bool(re.search(r'^enabled\s*=\s*true\s*$', body, re.M))
         yield name, market, enabled
+
+def plugin_cache_ready(plugin_name, plugin_root):
+    required = [plugin_root / ".codex-plugin" / "plugin.json"]
+    if system_name == "windows":
+        if plugin_name == "browser":
+            required.append(plugin_root / "scripts" / "browser-client.mjs")
+        elif plugin_name == "chrome":
+            required.append(plugin_root / "scripts" / "browser-client.mjs")
+            required.append(plugin_root / "extension-host" / "windows" / "x64" / "extension-host.exe")
+        elif plugin_name == "computer-use":
+            required.append(plugin_root / "scripts" / "computer-use-client.mjs")
+            required.append(plugin_root / "node_modules" / "@oai" / "sky" / "bin" / "windows" / "codex-computer-use.exe")
+    return all(p.is_file() for p in required)
 
 def source_plugin_names(source_root):
     plugins_root = pathlib.Path(source_root) / "plugins"
@@ -253,11 +303,11 @@ def cache_marketplaces():
         return set()
     return {p.name for p in cache_root.iterdir() if p.is_dir()}
 
-def has_plugin_cache(dst_base):
+def has_plugin_cache(dst_base, plugin_name):
     if not dst_base.exists():
         return False
     return any(
-        p.is_dir() and not p.is_symlink() and (p / ".codex-plugin" / "plugin.json").exists()
+        p.is_dir() and not p.is_symlink() and plugin_cache_ready(plugin_name, p)
         for p in dst_base.iterdir()
     )
 
@@ -284,7 +334,7 @@ def plugin_coverage_report_lines(cfg):
         source_market = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
         source = source_market / "plugins" / name if str(source_market) else None
         ok_market = market in markets
-        ok_cache = has_plugin_cache(cache)
+        ok_cache = has_plugin_cache(cache, name)
         source_exists = bool(source and source.exists())
         status = "OK" if ok_cache else "MISSING"
         lines.append(f"{status} {name}@{market} marketplace={yn(ok_market)} source={yn(source_exists)} cache={yn(ok_cache)}")
@@ -326,6 +376,23 @@ def write_diagnostic_log(cfg, missing):
     lines.extend(plugin_coverage_report_lines(cfg))
     log_path.write_text("\n".join(lines) + "\n")
 
+def write_failure_log(error, advice=()):
+    lines = [
+        "Codex Plugin Repair diagnostic log",
+        "Codex 插件修复诊断日志",
+        f"timestamp={stamp}",
+        f"platform={detected_platform}",
+        f"codex_home={codex_home}",
+        f"config={config_path}",
+        f"backup={backup_path}",
+        f"error={error}",
+    ]
+    if advice:
+        lines.append("")
+        lines.append("Advice / 建议:")
+        lines.extend(advice)
+    log_path.write_text("\n".join(lines) + "\n")
+
 def print_agents_help():
     print(f"诊断日志 / Diagnostic log: {log_path}", file=sys.stderr)
     print("你可以把这份日志粘贴到 Agents / Codex 软件中继续排查。", file=sys.stderr)
@@ -347,7 +414,7 @@ if system_name == "darwin":
 else:
     print(f"检测到平台：{detected_platform}。跳过 macOS Desktop bundled 插件自动启用。/ Platform detected: {detected_platform}. Skipping macOS Desktop bundled plugin auto-enable.")
 
-config_path.write_text(text)
+config_path.write_text(text, encoding="utf-8")
 
 def plugin_version(plugin_root):
     plugin_json = plugin_root / ".codex-plugin" / "plugin.json"
@@ -356,13 +423,21 @@ def plugin_version(plugin_root):
     with plugin_json.open() as f:
         return json.load(f).get("version")
 
-def cached_plugin_dirs(dst_base):
+def cached_plugin_dirs(plugin_name, dst_base):
     if not dst_base.exists():
         return []
     return sorted(
         p for p in dst_base.iterdir()
-        if p.is_dir() and not p.is_symlink() and (p / ".codex-plugin" / "plugin.json").exists()
+        if p.is_dir() and not p.is_symlink() and plugin_cache_ready(plugin_name, p)
     )
+
+def backup_path_for(path):
+    candidate = pathlib.Path(f"{path}.bak-plugin-repair-{stamp}")
+    index = 1
+    while candidate.exists() or candidate.is_symlink():
+        candidate = pathlib.Path(f"{path}.bak-plugin-repair-{stamp}-{index}")
+        index += 1
+    return candidate
 
 def update_latest_link(dst_base, target):
     latest = dst_base / "latest"
@@ -382,7 +457,7 @@ def copy_plugin(marketplace, plugin_name):
 
     src = src_market / "plugins" / plugin_name
     dst_base = codex_home / "plugins" / "cache" / marketplace / plugin_name
-    existing = cached_plugin_dirs(dst_base)
+    existing = cached_plugin_dirs(plugin_name, dst_base)
     if not src.exists():
         if existing:
             print(f"缓存已有效 / Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
@@ -405,7 +480,28 @@ def copy_plugin(marketplace, plugin_name):
     dst = dst_base / version
     dst_base.mkdir(parents=True, exist_ok=True)
     if dst.exists():
-        print(f"缓存已存在 / Cache exists for {plugin_name}@{marketplace}: {dst}")
+        if plugin_cache_ready(plugin_name, dst):
+            print(f"缓存已存在 / Cache exists for {plugin_name}@{marketplace}: {dst}")
+        else:
+            backup_dst = backup_path_for(dst)
+            try:
+                shutil.move(str(dst), str(backup_dst))
+                shutil.copytree(src, dst, symlinks=True)
+            except Exception as exc:
+                write_failure_log(
+                    f"Could not rebuild incomplete cache for {plugin_name}@{marketplace}: {exc}",
+                    [
+                        "请完全退出 Codex Desktop，然后重新运行本脚本。",
+                        "如果相关插件窗口仍在运行，请关闭后重试。",
+                        "Fully quit Codex Desktop, then run this script again.",
+                        "If related plugin windows are still running, close them and retry.",
+                    ],
+                )
+                print(f"无法重建残缺缓存 / Could not rebuild incomplete cache for {plugin_name}@{marketplace}: {exc}", file=sys.stderr)
+                print_agents_help()
+                sys.exit(3)
+            print(f"已备份残缺缓存 / Backed up incomplete cache for {plugin_name}@{marketplace}: {backup_dst}")
+            print(f"已重建插件缓存 / Rebuilt {plugin_name}@{marketplace} -> {dst}")
     else:
         shutil.copytree(src, dst, symlinks=True)
         print(f"已复制插件 / Copied {plugin_name}@{marketplace} -> {dst}")
@@ -415,7 +511,7 @@ def copy_plugin(marketplace, plugin_name):
     return True
 
 def enabled_plugins(src):
-    for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', src, re.M | re.S):
+    for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\r?\n(.*?)(?=^\[|\Z)', src, re.M | re.S):
         name, market, body = m.group(1), m.group(2), m.group(3)
         if re.search(r'^enabled\s*=\s*true\s*$', body, re.M):
             yield name, market
@@ -430,13 +526,13 @@ print("\n[5/5] 生成插件覆盖报告 / Generating plugin coverage report...")
 print_plugin_coverage_report(cfg)
 markets = set(re.findall(r'^\[marketplaces\.([^\]]+)\]', cfg, re.M))
 missing = []
-for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', cfg, re.M | re.S):
+for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\r?\n(.*?)(?=^\[|\Z)', cfg, re.M | re.S):
     name, market, body = m.group(1), m.group(2), m.group(3)
     if not re.search(r'^enabled\s*=\s*true\s*$', body, re.M):
         continue
     cache = codex_home / "plugins" / "cache" / market / name
     ok_market = market in markets
-    ok_cache = has_plugin_cache(cache)
+    ok_cache = has_plugin_cache(cache, name)
     src_market = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
     src = src_market / "plugins" / name if str(src_market) else None
     source_exists = bool(src and src.exists())
