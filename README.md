@@ -9,12 +9,12 @@ Repair local Codex plugin state after Codex Desktop updates or restarts, especia
 
 ## Quick Repair
 
-Run the one-line command for your platform. The script backs up `~/.codex/config.toml`, repairs local plugin config/cache state, and prints bilingual Chinese/English status messages when it finishes or hits a problem.
+Run the one-line command for your platform. The script shows guided Chinese/English progress steps, backs up `~/.codex/config.toml`, repairs local plugin config/cache state, and prints clear next steps when it finishes or hits a problem.
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.5/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.6/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 Fully quit and reopen Codex Desktop after the script finishes.
@@ -22,7 +22,7 @@ Fully quit and reopen Codex Desktop after the script finishes.
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.5/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.6/scripts/fix-codex-plugins.sh)
 ```
 
 Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.

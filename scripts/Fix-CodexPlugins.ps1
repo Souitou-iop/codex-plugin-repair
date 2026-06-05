@@ -11,6 +11,14 @@ $Stamp = Get-Date -Format "yyyyMMddHHmmss"
 $Backup = "$Config.bak-plugin-repair-$Stamp"
 $Log = Join-Path $CodexHome "codex-plugin-repair-diagnostics-$Stamp.log"
 
+Write-Host "Codex 插件修复脚本 / Codex Plugin Repair"
+Write-Host "将检查 config.toml、插件市场和插件缓存，并在需要时修复。"
+Write-Host "It will check config.toml, marketplaces, and plugin cache, then repair what it can."
+Write-Host "脚本会先备份配置文件，不会删除浏览器数据或当前有效配置。"
+Write-Host "The script backs up config first and does not delete browser data or the active config."
+Write-Host ""
+Write-Host "[1/5] 检查 Codex 配置 / Checking Codex config..."
+
 function Write-AgentsHelp {
     param([string]$LogPath)
     [Console]::Error.WriteLine("诊断日志 / Diagnostic log: $LogPath")
@@ -38,6 +46,7 @@ if (-not (Test-Path -LiteralPath $Config -PathType Leaf)) {
     exit 1
 }
 
+Write-Host "[2/5] 备份配置文件 / Backing up config..."
 Copy-Item -LiteralPath $Config -Destination $Backup -Force
 Write-Host "已备份配置文件。/ Backed up config to: $Backup"
 
@@ -527,6 +536,8 @@ $Text = [regex]::Replace($Text, '(?m)^service_tier\s*=\s*"default"\s*$', 'servic
 
 $DetectedPlatform = Get-DetectedPlatform
 $SystemName = $DetectedPlatform.ToLowerInvariant()
+Write-Host ""
+Write-Host "[3/5] 检测平台和修复 marketplace / Detecting platform and repairing marketplaces: $DetectedPlatform"
 $BundledSource = Join-Path $CodexHome ".tmp/bundled-marketplaces/openai-bundled"
 $CuratedSource = Join-Path $CodexHome ".tmp/plugins"
 $PrimaryRuntimeSource = Join-Path $HOME ".cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
@@ -560,6 +571,8 @@ if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
 
 Set-Content -LiteralPath $Config -Value $Text -NoNewline
 
+Write-Host ""
+Write-Host "[4/5] 修复已启用插件缓存 / Repairing enabled plugin cache..."
 foreach ($Plugin in Get-EnabledPlugins (Get-Content -LiteralPath $Config -Raw)) {
     Copy-Plugin -Marketplace $Plugin.Marketplace -PluginName $Plugin.Name -KnownMarketplaces $KnownMarketplaces | Out-Null
 }
@@ -584,6 +597,8 @@ if ($SystemName -eq "windows") {
 }
 
 $FinalText = Get-Content -LiteralPath $Config -Raw
+Write-Host ""
+Write-Host "[5/5] 生成插件覆盖报告 / Generating plugin coverage report..."
 Write-PluginCoverageReport -Text $FinalText -KnownMarketplaces $KnownMarketplaces
 $Markets = @{}
 foreach ($Match in [regex]::Matches($FinalText, '(?m)^\[marketplaces\.([^\]]+)\]')) {
@@ -614,13 +629,16 @@ if ($Missing.Count -gt 0) {
 
 Write-Host ""
 Write-Host "修复完成。/ Repair complete."
+Write-Host "下一步 / Next steps:"
 if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
-    Write-Host "如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
+    Write-Host "1. 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
     Write-Host "If Codex Desktop is open, restart it once so it reloads config.toml."
 } elseif ($SystemName -eq "linux") {
-    Write-Host "请启动新的 Codex CLI 会话以重新加载 config.toml。"
+    Write-Host "1. 请启动新的 Codex CLI 会话以重新加载 config.toml。"
     Write-Host "Start a new Codex CLI session so it reloads config.toml."
 } else {
-    Write-Host "请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
+    Write-Host "1. 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
     Write-Host "Restart Codex or start a new Codex session so it reloads config.toml."
 }
+Write-Host "2. 可运行 'codex mcp list' 检查工具是否出现。"
+Write-Host "You can run 'codex mcp list' to check whether the tools appear."

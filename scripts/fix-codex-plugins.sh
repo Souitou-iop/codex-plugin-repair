@@ -7,6 +7,14 @@ STAMP="$(date +%Y%m%d%H%M%S)"
 BACKUP="$CONFIG.bak-plugin-repair-$STAMP"
 LOG="$CODEX_HOME/codex-plugin-repair-diagnostics-$STAMP.log"
 
+echo "Codex 插件修复脚本 / Codex Plugin Repair"
+echo "将检查 config.toml、插件市场和插件缓存，并在需要时修复。"
+echo "It will check config.toml, marketplaces, and plugin cache, then repair what it can."
+echo "脚本会先备份配置文件，不会删除浏览器数据或当前有效配置。"
+echo "The script backs up config first and does not delete browser data or the active config."
+echo
+echo "[1/5] 检查 Codex 配置 / Checking Codex config..."
+
 print_agents_help() {
   local log_path="$1"
   echo "诊断日志 / Diagnostic log: $log_path" >&2
@@ -31,6 +39,7 @@ if [[ ! -f "$CONFIG" ]]; then
   exit 1
 fi
 
+echo "[2/5] 备份配置文件 / Backing up config..."
 cp "$CONFIG" "$BACKUP"
 echo "已备份配置文件。/ Backed up config to: $BACKUP"
 
@@ -127,6 +136,8 @@ known_marketplaces = {
     "openai-primary-runtime": primary_runtime_source,
 }
 verbose_report = os.environ.get("CODEX_PLUGIN_REPAIR_VERBOSE_REPORT") == "1"
+
+print(f"\n[3/5] 检测平台和修复 marketplace / Detecting platform and repairing marketplaces: {detected_platform}")
 
 def yn(value):
     return "true" if value else "false"
@@ -323,10 +334,12 @@ def enabled_plugins(src):
             yield name, market
 
 # Repair every already-enabled plugin that can be resolved from its marketplace.
+print("\n[4/5] 修复已启用插件缓存 / Repairing enabled plugin cache...")
 for name, market in enabled_plugins(config_path.read_text()):
     copy_plugin(market, name)
 
 cfg = config_path.read_text()
+print("\n[5/5] 生成插件覆盖报告 / Generating plugin coverage report...")
 print_plugin_coverage_report(cfg)
 markets = set(re.findall(r'^\[marketplaces\.([^\]]+)\]', cfg, re.M))
 missing = []
@@ -346,6 +359,7 @@ for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\n(.*?)(?=^\[|\Z)', cfg, 
 
 if missing:
     write_diagnostic_log(cfg, missing)
+    sys.stdout.flush()
     print("\n仍有插件缺失 / Still missing: " + ", ".join(missing), file=sys.stderr)
     print_agents_help()
     sys.exit(2)
@@ -353,18 +367,21 @@ PY
 
 echo
 echo "修复完成。/ Repair complete."
+echo "下一步 / Next steps:"
 PLATFORM_NAME="${CODEX_PLUGIN_REPAIR_PLATFORM:-$(uname -s)}"
 case "$PLATFORM_NAME" in
   Darwin)
-    echo "如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
+    echo "1. 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
     echo "If Codex Desktop is open, restart it once so it reloads config.toml."
     ;;
   Linux)
-    echo "请启动新的 Codex CLI 会话以重新加载 config.toml。"
+    echo "1. 请启动新的 Codex CLI 会话以重新加载 config.toml。"
     echo "Start a new Codex CLI session so it reloads config.toml."
     ;;
   *)
-    echo "请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
+    echo "1. 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
     echo "Restart Codex or start a new Codex session so it reloads config.toml."
     ;;
 esac
+echo "2. 可运行 'codex mcp list' 检查工具是否出现。"
+echo "You can run 'codex mcp list' to check whether the tools appear."

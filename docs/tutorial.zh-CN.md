@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-脚本会先给 `~/.codex/config.toml` 创建带时间戳的备份，再进行修改。执行完成或遇到问题时，终端会输出中英文提示。
+脚本会先给 `~/.codex/config.toml` 创建带时间戳的备份，再进行修改。运行时会显示步骤进度，执行完成或遇到问题时，终端会输出中英文提示。
 
 ## 3. 重启 Codex Desktop
 

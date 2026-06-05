@@ -36,7 +36,7 @@ If Codex Desktop is not installed as the normal AppX package, provide the bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-The script creates a timestamped backup of `~/.codex/config.toml` before editing. Completion and problem messages are printed in both Chinese and English.
+The script creates a timestamped backup of `~/.codex/config.toml` before editing. It prints guided progress steps, completion messages, and problem messages in both Chinese and English.
 
 ## 3. Restart Codex Desktop
 
