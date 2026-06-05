@@ -31,11 +31,30 @@ function Get-SelectedLanguage {
     return "zh-CN"
 }
 
+function Get-PromptPlatform {
+    if ($env:CODEX_PLUGIN_REPAIR_PLATFORM) {
+        return $env:CODEX_PLUGIN_REPAIR_PLATFORM
+    }
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        return "Windows"
+    }
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
+        return "Darwin"
+    }
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
+        return "Linux"
+    }
+    return "Unknown"
+}
+
 function Confirm-Execution {
     param(
         [string]$SelectedLanguage,
+        [string]$PlatformName,
         [bool]$SkipPrompt
     )
+
+    $PlatformLower = $PlatformName.ToLowerInvariant()
 
     if ($SelectedLanguage -eq "en-US") {
         Write-Host "Codex Plugin Repair"
@@ -44,8 +63,17 @@ function Confirm-Execution {
         Write-Host "2. Back up config.toml before changing anything."
         Write-Host "3. Repair known marketplace entries and service_tier when needed."
         Write-Host "4. Repair cache for plugins that are already enabled."
-        Write-Host "5. On Windows/macOS, enable Browser, Chrome, and Computer Use bundled plugins."
-        Write-Host "6. On Windows, rebuild bundled marketplace/cache and update the Computer Use notify helper path when possible."
+        if ($PlatformLower -eq "windows") {
+            Write-Host "5. On Windows, enable Browser, Chrome, and Computer Use bundled plugins."
+            Write-Host "6. On Windows, rebuild bundled marketplace/cache and update the Computer Use notify helper path when possible."
+        } elseif ($PlatformLower -eq "darwin") {
+            Write-Host "5. On macOS, enable Browser, Chrome, and Computer Use bundled plugins."
+            Write-Host "6. On macOS, repair bundled marketplace/cache and refresh latest links when possible."
+        } elseif ($PlatformLower -eq "linux") {
+            Write-Host "5. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
+        } else {
+            Write-Host "5. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
+        }
         Write-Host "It will not delete browser data, browser profiles, or the active config.toml."
         Write-Host "It will not close apps or terminate processes automatically. If files are locked, it will ask you to close Codex Desktop and retry."
         Write-Host ""
@@ -58,8 +86,17 @@ function Confirm-Execution {
         Write-Host "2. 修改前先备份 config.toml。"
         Write-Host "3. 按需修复已知 marketplace 配置和 service_tier。"
         Write-Host "4. 修复当前已经启用插件的缓存。"
-        Write-Host "5. 在 Windows/macOS 上启用 Browser、Chrome、Computer Use bundled 插件。"
-        Write-Host "6. 在 Windows 上尽量重建 bundled marketplace/cache，并修正 Computer Use notify helper 路径。"
+        if ($PlatformLower -eq "windows") {
+            Write-Host "5. 在 Windows 上启用 Browser、Chrome、Computer Use bundled 插件。"
+            Write-Host "6. 在 Windows 上尽量重建 bundled marketplace/cache，并修正 Computer Use notify helper 路径。"
+        } elseif ($PlatformLower -eq "darwin") {
+            Write-Host "5. 在 macOS 上启用 Browser、Chrome、Computer Use bundled 插件。"
+            Write-Host "6. 在 macOS 上尽量修复 bundled marketplace/cache，并刷新 latest 链接。"
+        } elseif ($PlatformLower -eq "linux") {
+            Write-Host "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
+        } else {
+            Write-Host "5. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
+        }
         Write-Host "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
         Write-Host "脚本不会自动关闭应用或结束进程；如果文件被占用，会提示你关闭 Codex Desktop 后重试。"
         Write-Host ""
@@ -78,7 +115,8 @@ function Confirm-Execution {
 }
 
 $SelectedLanguage = Get-SelectedLanguage -RequestedLanguage $Language
-Confirm-Execution -SelectedLanguage $SelectedLanguage -SkipPrompt ([bool]$Yes)
+$PromptPlatform = Get-PromptPlatform
+Confirm-Execution -SelectedLanguage $SelectedLanguage -PlatformName $PromptPlatform -SkipPrompt ([bool]$Yes)
 Write-Host ""
 if ($SelectedLanguage -eq "en-US") {
     Write-Host "[1/5] Checking Codex config..."

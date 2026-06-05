@@ -14,7 +14,7 @@ Run the one-line command for your platform. The script first asks you to choose 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.7/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.8/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 Fully quit and reopen Codex Desktop after the script finishes.
@@ -22,7 +22,7 @@ Fully quit and reopen Codex Desktop after the script finishes.
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.7/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.8/scripts/fix-codex-plugins.sh)
 ```
 
 Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.

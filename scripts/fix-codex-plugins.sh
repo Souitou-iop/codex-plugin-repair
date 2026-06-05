@@ -27,6 +27,7 @@ select_language() {
 }
 
 LANGUAGE="$(select_language)"
+SCRIPT_PLATFORM="${CODEX_PLUGIN_REPAIR_PLATFORM:-$(uname -s)}"
 
 confirm_execution() {
   if [[ "$LANGUAGE" == "en-US" ]]; then
@@ -36,7 +37,17 @@ confirm_execution() {
     echo "2. Back up config.toml before changing anything."
     echo "3. Repair known marketplace entries and service_tier when needed."
     echo "4. Repair cache for plugins that are already enabled."
-    echo "5. On macOS, enable Browser, Chrome, and Computer Use bundled plugins."
+    case "$SCRIPT_PLATFORM" in
+      Darwin)
+        echo "5. On macOS, enable Browser, Chrome, and Computer Use bundled plugins."
+        ;;
+      Linux)
+        echo "5. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
+        ;;
+      *)
+        echo "5. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
+        ;;
+    esac
     echo "It will not delete browser data, browser profiles, or the active config.toml."
     echo "It will not close apps or terminate processes automatically. If files are locked, close Codex Desktop and run it again."
     echo
@@ -51,7 +62,17 @@ confirm_execution() {
     echo "2. 修改前先备份 config.toml。"
     echo "3. 按需修复已知 marketplace 配置和 service_tier。"
     echo "4. 修复当前已经启用插件的缓存。"
-    echo "5. 在 macOS 上启用 Browser、Chrome、Computer Use bundled 插件。"
+    case "$SCRIPT_PLATFORM" in
+      Darwin)
+        echo "5. 在 macOS 上启用 Browser、Chrome、Computer Use bundled 插件。"
+        ;;
+      Linux)
+        echo "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
+        ;;
+      *)
+        echo "5. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
+        ;;
+    esac
     echo "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
     echo "脚本不会自动关闭应用或结束进程；如果文件被占用，请关闭 Codex Desktop 后重新运行。"
     echo

@@ -31,6 +31,12 @@ jobs:
           printf 'service_tier = "default"\n' > "$cancel_home/config.toml"
           printf '1\nno\n' | CODEX_HOME="$cancel_home" ./scripts/fix-codex-plugins.sh > "$RUNNER_TEMP/cancel-output.txt"
           grep -q '已取消，未做任何修改。' "$RUNNER_TEMP/cancel-output.txt"
+          if [[ "${{ matrix.platform }}" == "Linux" ]]; then
+            grep -q '在 Linux 上不启用 Desktop 专属 bundled 插件' "$RUNNER_TEMP/cancel-output.txt"
+          fi
+          if [[ "${{ matrix.platform }}" == "Darwin" ]]; then
+            grep -q '在 macOS 上启用 Browser、Chrome、Computer Use bundled 插件' "$RUNNER_TEMP/cancel-output.txt"
+          fi
           grep -q 'service_tier = "default"' "$cancel_home/config.toml"
           if compgen -G "$cancel_home/config.toml.bak-plugin-repair-*" > /dev/null; then
             exit 1
@@ -139,6 +145,27 @@ jobs:
             $errors | Format-List *
             exit 1
           }
+
+      - name: Verify cancel path
+        shell: pwsh
+        run: |
+          $cancelHome = Join-Path $env:RUNNER_TEMP "codex-home-cancel"
+          New-Item -ItemType Directory -Path $cancelHome -Force | Out-Null
+          'service_tier = "default"' | Set-Content -LiteralPath (Join-Path $cancelHome "config.toml") -NoNewline
+          $outputPath = Join-Path $env:RUNNER_TEMP "cancel-output.txt"
+          $env:CODEX_PLUGIN_REPAIR_PLATFORM = "Windows"
+          "no" | pwsh -NoProfile -File ./scripts/Fix-CodexPlugins.ps1 -CodexHome $cancelHome -Language zh-CN > $outputPath 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content -LiteralPath $outputPath
+            exit 1
+          }
+          $output = Get-Content -LiteralPath $outputPath -Raw
+          if ($output -notmatch '在 Windows 上启用 Browser、Chrome、Computer Use bundled 插件') { exit 1 }
+          if ($output -notmatch '已取消，未做任何修改。') { exit 1 }
+          $config = Get-Content -LiteralPath (Join-Path $cancelHome "config.toml") -Raw
+          if ($config -notmatch 'service_tier = "default"') { exit 1 }
+          $backups = @(Get-ChildItem -LiteralPath $cancelHome -Filter 'config.toml.bak-plugin-repair-*')
+          if ($backups.Count -ne 0) { exit 1 }
 
       - name: Build mock Codex home
         shell: pwsh

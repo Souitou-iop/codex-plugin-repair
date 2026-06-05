@@ -14,7 +14,7 @@
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.7/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.8/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 执行后完全退出并重新打开 Codex Desktop。
@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.7/scr
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.7/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.8/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
