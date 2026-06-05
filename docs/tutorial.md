@@ -36,7 +36,7 @@ If Codex Desktop is not installed as the normal AppX package, provide the bundle
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-The script asks for a language, explains the planned actions, and waits for `y` or `yes` before editing anything. After it starts, it warns about common processes that may keep plugin files locked, such as Codex, `extension-host`, and `codex-computer-use`. If Codex Desktop is detected, the script asks whether to close it first, and it only attempts to close Codex Desktop after you type `y` or `yes`. It creates a timestamped backup of `~/.codex/config.toml` before editing, then prints guided progress steps, completion messages, and problem messages.
+The script asks for a language, then immediately checks for common processes that may keep plugin files locked, such as Codex, `extension-host`, and `codex-computer-use`. If Codex Desktop is detected, the script asks whether to close it first. Typing `y` or `yes` is recommended to avoid locked files. You can continue without closing it, but restart Codex Desktop after repair. After that, the script explains the planned actions and waits for `y` or `yes` again before editing anything. It creates a timestamped backup of `~/.codex/config.toml` before editing, then prints guided progress steps, completion messages, and problem messages.
 
 ## 3. Restart Codex Desktop
 

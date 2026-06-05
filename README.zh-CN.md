@@ -11,17 +11,17 @@
 
 按下面 4 步操作即可：
 
-1. 先完全退出 Codex Desktop。
-2. 复制并运行对应平台的一行命令。
-3. 看到语言选择时输入 `1` 使用中文，或输入 `2` 使用英文。
+1. 复制并运行对应平台的一行命令。
+2. 看到语言选择时输入 `1` 使用中文，或输入 `2` 使用英文。
+3. 如果检测到 Codex Desktop 正在运行，建议输入 `y` 或 `yes` 先关闭它；输入 `n` 或 `no` 也可以继续，但修复完成后要重启 Codex Desktop。
 4. 看完脚本说明后，输入 `y` 或 `yes` 开始修复；输入 `n` 或 `no` 会退出且不修改任何文件。
 
-脚本会先检查是否有常见 Codex/插件进程正在运行；如果检测到 Codex Desktop，会询问你是否先关闭它。脚本会备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。脚本不会删除浏览器数据，不会修改浏览器 Profile，也不会在未经确认时结束进程。
+脚本会先检查是否有常见 Codex/插件进程正在运行；如果检测到 Codex Desktop，会在正式修复前询问你是否先关闭它。推荐先关闭，避免文件被占用；不关闭也可以继续运行，但修复完成后需要重启 Codex Desktop。脚本会备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。脚本不会删除浏览器数据，不会修改浏览器 Profile，也不会在未经确认时结束进程。
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.13/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/main/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 完成后重新打开 Codex Desktop。
@@ -29,7 +29,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.13/sc
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.13/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/main/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -99,7 +99,7 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 | macOS | 启用 `browser` / `chrome` / `computer-use`，修复 bundled / curated marketplace 和持久 cache，刷新 bundled 插件 `latest` 软链接。 |
 | Linux | 不强行启用 Desktop 插件，只修复当前配置里已经 `enabled=true` 的插件 marketplace/cache。 |
 
-所有平台都会先提示可能占用插件文件的常见进程，例如 Codex、`extension-host`、`codex-computer-use`。如果检测到 Codex Desktop，脚本会询问是否先关闭它；只有你输入 `y` 或 `yes` 才会尝试关闭。其他插件进程只做预警，不会自动结束。
+所有平台都会先提示可能占用插件文件的常见进程，例如 Codex、`extension-host`、`codex-computer-use`。如果检测到 Codex Desktop，脚本会先询问是否关闭；推荐关闭后再执行修复。只有你输入 `y` 或 `yes` 才会尝试关闭。其他插件进程只做预警，不会自动结束。
 
 脚本不会：
 

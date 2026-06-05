@@ -32,21 +32,20 @@ SCRIPT_PLATFORM="${CODEX_PLUGIN_REPAIR_PLATFORM:-$(uname -s)}"
 confirm_execution() {
   if [[ "$LANGUAGE" == "en-US" ]]; then
     echo "Codex Plugin Repair"
-    echo "This script will:"
-    echo "1. Check whether common Codex/plugin processes are running."
-    echo "2. Check your Codex config file."
-    echo "3. Back up config.toml before changing anything."
-    echo "4. Repair known marketplace entries and service_tier when needed."
-    echo "5. Repair cache for plugins that are already enabled."
+    echo "Next, this script will:"
+    echo "1. Check your Codex config file."
+    echo "2. Back up config.toml before changing anything."
+    echo "3. Repair known marketplace entries and service_tier when needed."
+    echo "4. Repair cache for plugins that are already enabled."
     case "$SCRIPT_PLATFORM" in
       Darwin)
-        echo "6. On macOS, enable Browser, Chrome, and Computer Use, repair bundled marketplace/cache, and refresh latest links when possible."
+        echo "5. On macOS, enable Browser, Chrome, and Computer Use, repair bundled marketplace/cache, and refresh latest links when possible."
         ;;
       Linux)
-        echo "6. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
+        echo "5. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
         ;;
       *)
-        echo "6. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
+        echo "5. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
         ;;
     esac
     echo "It will not delete browser data, browser profiles, or the active config.toml."
@@ -58,21 +57,20 @@ confirm_execution() {
     printf "Type yes/y to continue, or no/n to exit: "
   else
     echo "Codex 插件修复脚本"
-    echo "这个脚本将执行以下操作："
-    echo "1. 检查常见 Codex/插件进程是否正在运行。"
-    echo "2. 检查 Codex 配置文件。"
-    echo "3. 修改前先备份 config.toml。"
-    echo "4. 按需修复已知 marketplace 配置和 service_tier。"
-    echo "5. 修复当前已经启用插件的缓存。"
+    echo "接下来脚本将执行以下操作："
+    echo "1. 检查 Codex 配置文件。"
+    echo "2. 修改前先备份 config.toml。"
+    echo "3. 按需修复已知 marketplace 配置和 service_tier。"
+    echo "4. 修复当前已经启用插件的缓存。"
     case "$SCRIPT_PLATFORM" in
       Darwin)
-        echo "6. 在 macOS 上启用 Browser、Chrome、Computer Use，尽量修复 bundled marketplace/cache，并刷新 latest 链接。"
+        echo "5. 在 macOS 上启用 Browser、Chrome、Computer Use，尽量修复 bundled marketplace/cache，并刷新 latest 链接。"
         ;;
       Linux)
-        echo "6. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
+        echo "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
         ;;
       *)
-        echo "6. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
+        echo "5. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
         ;;
     esac
     echo "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
@@ -96,8 +94,6 @@ confirm_execution() {
   exit 0
 }
 
-confirm_execution
-echo
 show_running_process_warning() {
   local matches
   local codex_matches
@@ -174,9 +170,9 @@ maybe_close_codex_desktop() {
         return
       fi
       if [[ "$LANGUAGE" == "en-US" ]]; then
-        printf "Codex Desktop is running. Close it now before repair? Type yes/y to close, or no/n to continue: "
+        printf "Codex Desktop is running. Recommended: close it before repair to avoid locked files. You can continue without closing, but restart Codex Desktop after repair. Close it now? Type yes/y to close, or no/n to continue: "
       else
-        printf "检测到 Codex Desktop 正在运行。是否现在关闭它再继续修复？输入 yes/y 关闭，输入 no/n 继续: "
+        printf "检测到 Codex Desktop 正在运行。推荐先关闭它再修复，避免文件被占用。不关闭也可以继续运行，但修复完成后需要重启 Codex Desktop。是否现在关闭？输入 yes/y 关闭，输入 no/n 继续: "
       fi
       read -r answer
       if is_yes_answer "$answer"; then
@@ -187,9 +183,9 @@ maybe_close_codex_desktop() {
 
   if [[ "$should_close" != "1" ]]; then
     if [[ "$LANGUAGE" == "en-US" ]]; then
-      echo "Continuing without closing Codex Desktop. File-in-use errors are still possible."
+      echo "Continuing without closing Codex Desktop. File-in-use errors are still possible; restart Codex Desktop after repair."
     else
-      echo "将继续执行，但 Codex Desktop 未关闭时仍可能出现文件被占用。"
+      echo "将继续执行，但 Codex Desktop 未关闭时仍可能出现文件被占用；修复完成后请重启 Codex Desktop。"
     fi
     return
   fi
@@ -255,6 +251,8 @@ else
   echo "[1/6] 检查正在运行的 Codex/插件进程..."
 fi
 show_running_process_warning
+echo
+confirm_execution
 echo
 if [[ "$LANGUAGE" == "en-US" ]]; then
   echo "[2/6] Checking Codex config..."
