@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
 ```
 
-脚本会先让你选择语言，说明计划执行的操作，并等待你输入 `y` 或 `yes` 后才会开始修改。开始后会提示可能占用插件文件的常见进程，例如 Codex、`extension-host`、`codex-computer-use`；这只是预警，脚本不会自动关闭它们。修改前会给 `~/.codex/config.toml` 创建带时间戳的备份；运行时会显示步骤进度，执行完成或遇到问题时，终端会输出提示。
+脚本会先让你选择语言，说明计划执行的操作，并等待你输入 `y` 或 `yes` 后才会开始修改。开始后会提示可能占用插件文件的常见进程，例如 Codex、`extension-host`、`codex-computer-use`；如果检测到 Codex Desktop，会询问是否先关闭它，只有你输入 `y` 或 `yes` 才会尝试关闭。修改前会给 `~/.codex/config.toml` 创建带时间戳的备份；运行时会显示步骤进度，执行完成或遇到问题时，终端会输出提示。
 
 ## 3. 重启 Codex Desktop
 

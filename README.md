@@ -16,12 +16,12 @@ Use these four steps:
 3. When the script asks for language, type `1` for Chinese or `2` for English.
 4. After reading the explanation, type `y` or `yes` to repair. Type `n` or `no` to exit without changing files.
 
-The script first checks for common running Codex/plugin processes, then backs up `~/.codex/config.toml` and repairs local plugin config/cache state. It does not delete browser data, edit browser profiles, or close/terminate apps automatically. If it detects a process that may lock plugin files, it only prints a warning.
+The script first checks for common running Codex/plugin processes. If Codex Desktop is running, it asks whether to close it before repair. It backs up `~/.codex/config.toml`, then repairs local plugin config/cache state. It does not delete browser data, edit browser profiles, or terminate processes without confirmation.
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.12/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.13/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 Reopen Codex Desktop after the script finishes.
@@ -29,7 +29,7 @@ Reopen Codex Desktop after the script finishes.
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.12/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.13/scripts/fix-codex-plugins.sh)
 ```
 
 Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.
@@ -99,7 +99,7 @@ This script is not meant for:
 | macOS | Enables `browser`, `chrome`, and `computer-use`; repairs bundled/curated marketplace entries and persistent cache; refreshes bundled plugin `latest` symlinks. |
 | Linux | Does not force-enable Desktop plugins. It only repairs marketplace/cache state for plugins already marked `enabled=true`. |
 
-On every platform, the script warns about common processes that may keep plugin files locked, such as Codex, `extension-host`, and `codex-computer-use`. This is only a warning; the script does not close those processes for you.
+On every platform, the script warns about common processes that may keep plugin files locked, such as Codex, `extension-host`, and `codex-computer-use`. If Codex Desktop is detected, the script asks whether to close it first; it only attempts to close Codex Desktop after you type `y` or `yes`. Other plugin processes are warning-only and are not terminated automatically.
 
 The script does not:
 
@@ -107,7 +107,7 @@ The script does not:
 - edit browser profiles
 - force-install browser extensions
 - enable random plugins
-- close apps or terminate processes automatically
+- close apps or terminate processes without confirmation
 - delete the active `config.toml`
 
 ## Verify The Repair

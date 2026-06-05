@@ -50,7 +50,7 @@ confirm_execution() {
         ;;
     esac
     echo "It will not delete browser data, browser profiles, or the active config.toml."
-    echo "It will not close apps or terminate processes automatically. If files are locked, close Codex Desktop and run it again."
+    echo "If Codex Desktop is running, it will ask whether to close it before repair. It will not terminate processes without your confirmation."
     echo
     if [[ "${CODEX_PLUGIN_REPAIR_YES:-}" == "1" ]]; then
       return
@@ -76,7 +76,7 @@ confirm_execution() {
         ;;
     esac
     echo "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
-    echo "脚本不会自动关闭应用或结束进程；如果文件被占用，请关闭 Codex Desktop 后重新运行。"
+    echo "如果检测到 Codex Desktop 正在运行，会询问是否先关闭它；未经确认不会结束进程。"
     echo
     if [[ "${CODEX_PLUGIN_REPAIR_YES:-}" == "1" ]]; then
       return
@@ -100,6 +100,7 @@ confirm_execution
 echo
 show_running_process_warning() {
   local matches
+  local codex_matches
   if ! command -v pgrep >/dev/null 2>&1; then
     if [[ "$LANGUAGE" == "en-US" ]]; then
       echo "Process preflight skipped because pgrep is unavailable."
@@ -109,7 +110,7 @@ show_running_process_warning() {
     return
   fi
 
-  matches="$(pgrep -fl 'Codex|extension-host|codex-computer-use' 2>/dev/null | grep -v "^$$ " || true)"
+  matches="$(find_repair_related_processes)"
   if [[ -z "$matches" ]]; then
     if [[ "$LANGUAGE" == "en-US" ]]; then
       echo "No common Codex plugin processes were detected."
@@ -128,11 +129,124 @@ show_running_process_warning() {
     echo "- $line"
   done
 
-  if [[ "$LANGUAGE" == "en-US" ]]; then
-    echo "The script will not close them automatically. If repair fails with a file-in-use error, fully quit Codex Desktop and related plugin windows, then run this script again."
-  else
-    echo "脚本不会自动关闭这些进程。如果稍后遇到文件被占用，请完全退出 Codex Desktop 和相关插件窗口，然后重新运行脚本。"
+  codex_matches="$(printf '%s\n' "$matches" | awk '$2 == "Codex" { print }')"
+  if [[ -n "$codex_matches" ]]; then
+    maybe_close_codex_desktop "$codex_matches"
   fi
+
+  if [[ "$LANGUAGE" == "en-US" ]]; then
+    echo "If repair still fails with a file-in-use error, fully quit Codex Desktop and related plugin windows, then run this script again."
+  else
+    echo "如果稍后仍遇到文件被占用，请完全退出 Codex Desktop 和相关插件窗口，然后重新运行脚本。"
+  fi
+}
+
+is_yes_answer() {
+  local normalized
+  normalized="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  [[ "$normalized" == "yes" || "$normalized" == "y" ]]
+}
+
+maybe_close_codex_desktop() {
+  local codex_matches="$1"
+  local answer
+  local should_close=0
+
+  case "${CODEX_PLUGIN_REPAIR_CLOSE_CODEX_DESKTOP:-}" in
+    1)
+      should_close=1
+      ;;
+    0)
+      if [[ "$LANGUAGE" == "en-US" ]]; then
+        echo "Skipping Codex Desktop close because CODEX_PLUGIN_REPAIR_CLOSE_CODEX_DESKTOP=0."
+      else
+        echo "已按 CODEX_PLUGIN_REPAIR_CLOSE_CODEX_DESKTOP=0 跳过关闭 Codex Desktop。"
+      fi
+      return
+      ;;
+    *)
+      if [[ "${CODEX_PLUGIN_REPAIR_YES:-}" == "1" ]]; then
+        if [[ "$LANGUAGE" == "en-US" ]]; then
+          echo "Codex Desktop is running. Automatic yes mode is enabled, so the script will not close it without an explicit close setting."
+        else
+          echo "检测到 Codex Desktop 正在运行。当前为自动确认模式，未显式要求关闭时不会自动关闭它。"
+        fi
+        return
+      fi
+      if [[ "$LANGUAGE" == "en-US" ]]; then
+        printf "Codex Desktop is running. Close it now before repair? Type yes/y to close, or no/n to continue: "
+      else
+        printf "检测到 Codex Desktop 正在运行。是否现在关闭它再继续修复？输入 yes/y 关闭，输入 no/n 继续: "
+      fi
+      read -r answer
+      if is_yes_answer "$answer"; then
+        should_close=1
+      fi
+      ;;
+  esac
+
+  if [[ "$should_close" != "1" ]]; then
+    if [[ "$LANGUAGE" == "en-US" ]]; then
+      echo "Continuing without closing Codex Desktop. File-in-use errors are still possible."
+    else
+      echo "将继续执行，但 Codex Desktop 未关闭时仍可能出现文件被占用。"
+    fi
+    return
+  fi
+
+  if [[ "$SCRIPT_PLATFORM" == "Darwin" && -x /usr/bin/osascript ]]; then
+    if /usr/bin/osascript -e 'tell application "Codex" to quit' >/dev/null 2>&1; then
+      if [[ "$LANGUAGE" == "en-US" ]]; then
+        echo "Requested Codex Desktop to close."
+      else
+        echo "已请求 Codex Desktop 关闭。"
+      fi
+      sleep 3
+    else
+      if [[ "$LANGUAGE" == "en-US" ]]; then
+        echo "Could not request Codex Desktop to close. Please close it manually if repair fails."
+      else
+        echo "无法请求 Codex Desktop 关闭。如果修复失败，请手动关闭后重试。"
+      fi
+    fi
+  else
+    if [[ "$LANGUAGE" == "en-US" ]]; then
+      echo "Automatic Codex Desktop close is only supported on macOS Bash. Please close it manually if repair fails."
+    else
+      echo "Bash 版仅支持在 macOS 上自动请求关闭 Codex Desktop。如果修复失败，请手动关闭后重试。"
+    fi
+  fi
+
+  if process_name_exists "Codex"; then
+    if [[ "$LANGUAGE" == "en-US" ]]; then
+      echo "Codex Desktop may still be running. If repair fails, close it manually and run this script again."
+    else
+      echo "Codex Desktop 可能仍在运行。如果修复失败，请手动关闭后重新运行脚本。"
+    fi
+  else
+    if [[ "$LANGUAGE" == "en-US" ]]; then
+      echo "Codex Desktop is closed. Continuing repair."
+    else
+      echo "Codex Desktop 已关闭，继续修复。"
+    fi
+  fi
+}
+
+process_name_exists() {
+  local name="$1"
+  pgrep -x "$name" >/dev/null 2>&1
+}
+
+find_repair_related_processes() {
+  local name
+  local pid
+  for name in Codex extension-host codex-computer-use; do
+    pgrep -x "$name" 2>/dev/null | while IFS= read -r pid; do
+      if [[ "$pid" != "$$" ]]; then
+        printf '%s %s\n' "$pid" "$name"
+      fi
+    done
+  done | sort -n -u
 }
 
 if [[ "$LANGUAGE" == "en-US" ]]; then

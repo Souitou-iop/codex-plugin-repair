@@ -74,7 +74,7 @@ function Confirm-Execution {
             Write-Host "6. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
         }
         Write-Host "It will not delete browser data, browser profiles, or the active config.toml."
-        Write-Host "It will not close apps or terminate processes automatically. If files are locked, it will ask you to close Codex Desktop and retry."
+        Write-Host "If Codex Desktop is running, it will ask whether to close it before repair. It will not terminate processes without your confirmation."
         Write-Host ""
         if ($SkipPrompt) { return }
         $Answer = Read-Host "Type yes/y to continue, or no/n to exit"
@@ -96,7 +96,7 @@ function Confirm-Execution {
             Write-Host "6. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
         }
         Write-Host "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
-        Write-Host "脚本不会自动关闭应用或结束进程；如果文件被占用，会提示你关闭 Codex Desktop 后重试。"
+        Write-Host "如果检测到 Codex Desktop 正在运行，会询问是否先关闭它；未经确认不会结束进程。"
         Write-Host ""
         if ($SkipPrompt) { return }
         $Answer = Read-Host "输入 yes 或 y 继续执行，输入 no 或 n 退出"
@@ -118,7 +118,8 @@ function Confirm-Execution {
 function Show-RunningProcessWarning {
     param(
         [string]$SelectedLanguage,
-        [string]$PlatformName
+        [string]$PlatformName,
+        [bool]$SkipClosePrompt
     )
 
     $ProcessNames = @("Codex", "extension-host", "codex-computer-use")
@@ -148,10 +149,112 @@ function Show-RunningProcessWarning {
         Write-Host "- $($Process.ProcessName) (PID $($Process.Id))"
     }
 
+    $CodexProcesses = @($Running | Where-Object { $_.ProcessName -eq "Codex" })
+    if ($CodexProcesses.Count -gt 0) {
+        Maybe-CloseCodexDesktop -Processes $CodexProcesses -SelectedLanguage $SelectedLanguage -SkipPrompt $SkipClosePrompt
+    }
+
     if ($SelectedLanguage -eq "en-US") {
-        Write-Host "The script will not close them automatically. If repair fails with a file-in-use error, fully quit Codex Desktop and related plugin windows, then run this script again."
+        Write-Host "If repair still fails with a file-in-use error, fully quit Codex Desktop and related plugin windows, then run this script again."
     } else {
-        Write-Host "脚本不会自动关闭这些进程。如果稍后遇到文件被占用，请完全退出 Codex Desktop 和相关插件窗口，然后重新运行脚本。"
+        Write-Host "如果稍后仍遇到文件被占用，请完全退出 Codex Desktop 和相关插件窗口，然后重新运行脚本。"
+    }
+}
+
+function Test-YesAnswer {
+    param([string]$Answer)
+
+    $Normalized = $Answer.Trim().ToLowerInvariant()
+    return ($Normalized -eq "yes" -or $Normalized -eq "y")
+}
+
+function Maybe-CloseCodexDesktop {
+    param(
+        [array]$Processes,
+        [string]$SelectedLanguage,
+        [bool]$SkipPrompt
+    )
+
+    $CloseChoice = $env:CODEX_PLUGIN_REPAIR_CLOSE_CODEX_DESKTOP
+    $ShouldClose = $false
+
+    if ($CloseChoice -eq "1") {
+        $ShouldClose = $true
+    } elseif ($CloseChoice -eq "0") {
+        if ($SelectedLanguage -eq "en-US") {
+            Write-Host "Skipping Codex Desktop close because CODEX_PLUGIN_REPAIR_CLOSE_CODEX_DESKTOP=0."
+        } else {
+            Write-Host "已按 CODEX_PLUGIN_REPAIR_CLOSE_CODEX_DESKTOP=0 跳过关闭 Codex Desktop。"
+        }
+        return
+    } elseif ($SkipPrompt) {
+        if ($SelectedLanguage -eq "en-US") {
+            Write-Host "Codex Desktop is running. Automatic yes mode is enabled, so the script will not close it without an explicit close setting."
+        } else {
+            Write-Host "检测到 Codex Desktop 正在运行。当前为自动确认模式，未显式要求关闭时不会自动关闭它。"
+        }
+        return
+    } else {
+        if ($SelectedLanguage -eq "en-US") {
+            $Answer = Read-Host "Codex Desktop is running. Close it now before repair? Type yes/y to close, or no/n to continue"
+        } else {
+            $Answer = Read-Host "检测到 Codex Desktop 正在运行。是否现在关闭它再继续修复？输入 yes/y 关闭，输入 no/n 继续"
+        }
+        $ShouldClose = Test-YesAnswer -Answer $Answer
+    }
+
+    if (-not $ShouldClose) {
+        if ($SelectedLanguage -eq "en-US") {
+            Write-Host "Continuing without closing Codex Desktop. File-in-use errors are still possible."
+        } else {
+            Write-Host "将继续执行，但 Codex Desktop 未关闭时仍可能出现文件被占用。"
+        }
+        return
+    }
+
+    foreach ($Process in $Processes) {
+        try {
+            if ($Process.MainWindowHandle -ne 0) {
+                [void]$Process.CloseMainWindow()
+                if ($SelectedLanguage -eq "en-US") {
+                    Write-Host "Requested Codex Desktop to close: PID $($Process.Id)"
+                } else {
+                    Write-Host "已请求 Codex Desktop 关闭：PID $($Process.Id)"
+                }
+            } else {
+                if ($SelectedLanguage -eq "en-US") {
+                    Write-Host "Could not request a normal close for Codex Desktop PID $($Process.Id) because it has no main window."
+                } else {
+                    Write-Host "无法正常请求关闭 Codex Desktop PID $($Process.Id)：未检测到主窗口。"
+                }
+            }
+        } catch {
+            if ($SelectedLanguage -eq "en-US") {
+                Write-Host "Could not close Codex Desktop PID $($Process.Id): $($_.Exception.Message)"
+            } else {
+                Write-Host "无法关闭 Codex Desktop PID $($Process.Id)：$($_.Exception.Message)"
+            }
+        }
+    }
+
+    Start-Sleep -Seconds 3
+    $Remaining = @()
+    foreach ($Process in $Processes) {
+        $Remaining += @(Get-Process -Id $Process.Id -ErrorAction SilentlyContinue)
+    }
+
+    if ($Remaining.Count -eq 0) {
+        if ($SelectedLanguage -eq "en-US") {
+            Write-Host "Codex Desktop is closed. Continuing repair."
+        } else {
+            Write-Host "Codex Desktop 已关闭，继续修复。"
+        }
+    } else {
+        if ($SelectedLanguage -eq "en-US") {
+            Write-Host "Codex Desktop may still be running. If repair fails, close it manually and run this script again."
+        } else {
+            Write-Host "Codex Desktop 可能仍在运行。如果修复失败，请手动关闭后重新运行脚本。"
+        }
     }
 }
 
@@ -164,7 +267,7 @@ if ($SelectedLanguage -eq "en-US") {
 } else {
     Write-Host "[1/6] 检查正在运行的 Codex/插件进程..."
 }
-Show-RunningProcessWarning -SelectedLanguage $SelectedLanguage -PlatformName $PromptPlatform
+Show-RunningProcessWarning -SelectedLanguage $SelectedLanguage -PlatformName $PromptPlatform -SkipClosePrompt ([bool]$Yes)
 Write-Host ""
 if ($SelectedLanguage -eq "en-US") {
     Write-Host "[2/6] Checking Codex config..."
