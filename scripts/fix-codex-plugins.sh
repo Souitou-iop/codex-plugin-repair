@@ -241,7 +241,7 @@ find_repair_related_processes() {
   local name
   local pid
   for name in Codex extension-host codex-computer-use; do
-    pgrep -x "$name" 2>/dev/null | while IFS= read -r pid; do
+    { pgrep -x "$name" 2>/dev/null || true; } | while IFS= read -r pid; do
       if [[ "$pid" != "$$" ]]; then
         printf '%s %s\n' "$pid" "$name"
       fi
