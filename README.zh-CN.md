@@ -7,9 +7,29 @@
 
 > 非官方社区修复脚本，不是 OpenAI 官方工具。脚本会先备份 `~/.codex/config.toml`，再修改配置和插件缓存。
 
-## 先运行哪条命令
+## 快速修复
 
-推荐先 clone 仓库，方便检查脚本内容。
+急用时直接执行下面的一行命令。脚本会先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。
+
+### Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/Fix-CodexPlugins.ps1 | iex
+```
+
+执行后完全退出并重新打开 Codex Desktop。
+
+### macOS / Linux
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/fix-codex-plugins.sh)
+```
+
+macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
+
+## 想先检查脚本内容
+
+如果你想先阅读脚本，或者公司环境不允许 `curl | bash` / `irm | iex`，用 clone 后运行的方式。
 
 ### Windows
 
@@ -19,9 +39,7 @@ cd codex-plugin-repair
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
-执行后完全退出并重新打开 Codex Desktop。
-
-如果不是标准 AppX 安装，可以手动指定 bundled 源目录：
+非标准 AppX 安装可以手动指定 bundled 源目录：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
@@ -35,8 +53,6 @@ cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
 ```
 
-执行后重启 Codex Desktop。
-
 ### Linux
 
 ```bash
@@ -46,22 +62,6 @@ cd codex-plugin-repair
 ```
 
 Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 CLI-only 修复：修复已经启用插件的 marketplace/cache 一致性，不会强行启用 Desktop 专属插件。
-
-## 一行命令
-
-急用时可以直接执行。更稳妥的方式仍然是先 clone 后阅读脚本。
-
-macOS / Linux：
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/fix-codex-plugins.sh)
-```
-
-Windows PowerShell：
-
-```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/Fix-CodexPlugins.ps1 | iex
-```
 
 ## 什么时候该用
 

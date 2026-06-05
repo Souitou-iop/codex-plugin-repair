@@ -7,9 +7,29 @@ Repair local Codex plugin state after Codex Desktop updates or restarts, especia
 
 > This is an unofficial community workaround, not an OpenAI-maintained tool. The script backs up `~/.codex/config.toml` before editing config or plugin cache state.
 
-## Which Command Should I Run?
+## Quick Repair
 
-The recommended path is to clone the repository first so you can inspect the script.
+Run the one-line command for your platform. The script backs up `~/.codex/config.toml` before repairing local plugin config and cache state.
+
+### Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/Fix-CodexPlugins.ps1 | iex
+```
+
+Fully quit and reopen Codex Desktop after the script finishes.
+
+### macOS / Linux
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/fix-codex-plugins.sh)
+```
+
+Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.
+
+## Inspect Before Running
+
+Use the clone-and-run flow if you want to read the script first, or if your environment blocks `curl | bash` / `irm | iex`.
 
 ### Windows
 
@@ -19,9 +39,7 @@ cd codex-plugin-repair
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1
 ```
 
-Fully quit and reopen Codex Desktop after the script finishes.
-
-If your install is not the standard AppX package, pass the bundled source manually:
+For a non-standard AppX install, pass the bundled source manually:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -BundledSourceRoot "C:\Path\To\openai-bundled"
@@ -35,8 +53,6 @@ cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
 ```
 
-Restart Codex Desktop after the script finishes.
-
 ### Linux
 
 ```bash
@@ -46,22 +62,6 @@ cd codex-plugin-repair
 ```
 
 Linux does not have the same Codex Desktop + Computer Use failure mode. The script runs in CLI-only mode: it repairs marketplace/cache consistency for plugins that are already enabled, and it does not force-enable Desktop-only plugins.
-
-## One-Line Usage
-
-Use this form when you need a quick repair. Inspecting the script first is still the safer default.
-
-macOS / Linux:
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/fix-codex-plugins.sh)
-```
-
-Windows PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.3/scripts/Fix-CodexPlugins.ps1 | iex
-```
 
 ## When To Use It
 
