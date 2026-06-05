@@ -44,21 +44,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Fix-CodexPlugins.ps1 -Bundled
 
 Linux 下执行完成后，启动新的 Codex CLI 会话即可。
 
-## 4. 可选：验证 MCP 状态
-
-```bash
-codex mcp list
-```
-
-如果没有安装 Codex CLI，或者终端里没有 `codex` 命令，请跳过这一步。
-
-预期结果：
-
-- 如果 Computer Use 已启用，应能看到 `computer-use`
-- `node_repl` 仍然正常启用
-- 不再出现配置解析错误
-
-## 5. 在 macOS 下验证 Chrome Native Host
+## 4. 在 macOS 下验证 Chrome Native Host
 
 ```bash
 /Applications/Codex.app/Contents/Resources/node \
@@ -87,7 +73,7 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 如果 Chrome 仍然连不上，重新在 Codex Desktop 里走一遍 Chrome 插件安装流程，让 Windows native messaging 注册刷新。
 
-## 6. 如果仍然失败
+## 5. 如果仍然失败
 
 看脚本末尾的中英文插件覆盖报告。如果某个已启用插件无法修复，脚本会输出 `MISSING` 行。重点看这些字段：
 

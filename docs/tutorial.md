@@ -44,21 +44,7 @@ Quit and reopen Codex Desktop so the app reloads plugin configuration.
 
 On Linux, start a new Codex CLI session instead.
 
-## 4. Optional: Verify MCP State
-
-```bash
-codex mcp list
-```
-
-Skip this check if the `codex` command is not installed or not available in `PATH`.
-
-Expected:
-
-- `computer-use` is listed when enabled
-- `node_repl` remains enabled
-- no config parsing error appears
-
-## 5. Verify Chrome Native Host On macOS
+## 4. Verify Chrome Native Host On macOS
 
 ```bash
 /Applications/Codex.app/Contents/Resources/node \
@@ -87,7 +73,7 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 If Chrome still cannot connect, rerun the Chrome plugin setup flow from Codex Desktop so Windows native messaging registration is refreshed.
 
-## 6. What To Do If It Still Fails
+## 5. What To Do If It Still Fails
 
 Check the bilingual plugin coverage report at the end of the script output. If an enabled plugin cannot be repaired, it will print a `MISSING` line. The most important fields are:
 

@@ -94,8 +94,8 @@ jobs:
           grep -q 'service_tier = "fast"' "$CODEX_HOME/config.toml"
           grep -q '\[1/5\] 检查 Codex 配置...' "$RUNNER_TEMP/repair-output.txt"
           grep -q '插件覆盖报告 / Plugin coverage report:' "$RUNNER_TEMP/repair-output.txt"
-          grep -q '修复完成。/ Repair complete.' "$RUNNER_TEMP/repair-output.txt"
-          grep -q '后续建议（不是菜单选项，不需要输入数字） / Next steps' "$RUNNER_TEMP/repair-output.txt"
+          grep -q '修复完成。' "$RUNNER_TEMP/repair-output.txt"
+          grep -q '后续建议：' "$RUNNER_TEMP/repair-output.txt"
           grep -q 'OK mystery@openai-unknown marketplace=false source=false cache=true' "$RUNNER_TEMP/repair-output.txt"
           test -d "$CODEX_HOME/plugins/cache/openai-curated/codex-security/2.0.0"
           test -d "$CODEX_HOME/plugins/cache/openai-unknown/mystery/9.9.9"
@@ -244,8 +244,8 @@ jobs:
           if ($config -notmatch 'service_tier = "fast"') { exit 1 }
           if ($output -notmatch '\[1/5\] 检查 Codex 配置...') { exit 1 }
           if ($output -notmatch '插件覆盖报告 / Plugin coverage report:') { exit 1 }
-          if ($output -notmatch '修复完成。/ Repair complete.') { exit 1 }
-          if ($output -notmatch '后续建议（不是菜单选项，不需要输入数字） / Next steps') { exit 1 }
+          if ($output -notmatch '修复完成。') { exit 1 }
+          if ($output -notmatch '后续建议：') { exit 1 }
           if ($output -notmatch 'OK mystery@openai-unknown marketplace=false source=false cache=true') { exit 1 }
           foreach ($plugin in @("browser", "chrome", "computer-use")) {
             if ($config -notmatch "\[plugins\.\`"$plugin@openai-bundled\`"\]") { exit 1 }

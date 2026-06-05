@@ -14,7 +14,7 @@ Run the one-line command for your platform. The script first asks you to choose 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.9/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 Fully quit and reopen Codex Desktop after the script finishes.
@@ -22,7 +22,7 @@ Fully quit and reopen Codex Desktop after the script finishes.
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.9/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/fix-codex-plugins.sh)
 ```
 
 Restart Codex Desktop after running on macOS. On Linux, start a new Codex CLI session.
@@ -100,14 +100,6 @@ The script does not:
 - delete the active `config.toml`
 
 ## Verify The Repair
-
-Optional Codex CLI check. Skip this if the `codex` command is not installed or not available in `PATH`:
-
-```bash
-codex mcp list
-```
-
-You should see `computer-use` when Computer Use is enabled in a CLI-capable environment.
 
 macOS Chrome native host check:
 

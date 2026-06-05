@@ -794,17 +794,24 @@ if ($Missing.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "修复完成。/ Repair complete."
-Write-Host "后续建议（不是菜单选项，不需要输入数字） / Next steps (not a menu; do not type the numbers):"
-if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
-    Write-Host "- 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
-    Write-Host "- If Codex Desktop is open, restart it once so it reloads config.toml."
-} elseif ($SystemName -eq "linux") {
-    Write-Host "- 请启动新的 Codex CLI 会话以重新加载 config.toml。"
-    Write-Host "- Start a new Codex CLI session so it reloads config.toml."
+if ($SelectedLanguage -eq "en-US") {
+    Write-Host "Repair complete."
+    Write-Host "Next step:"
+    if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
+        Write-Host "- Restart Codex Desktop so it reloads config.toml."
+    } elseif ($SystemName -eq "linux") {
+        Write-Host "- Start a new Codex CLI session so it reloads config.toml."
+    } else {
+        Write-Host "- Restart Codex or start a new Codex session so it reloads config.toml."
+    }
 } else {
-    Write-Host "- 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
-    Write-Host "- Restart Codex or start a new Codex session so it reloads config.toml."
+    Write-Host "修复完成。"
+    Write-Host "后续建议："
+    if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
+        Write-Host "- 重启 Codex Desktop，让它重新加载 config.toml。"
+    } elseif ($SystemName -eq "linux") {
+        Write-Host "- 启动新的 Codex CLI 会话，让它重新加载 config.toml。"
+    } else {
+        Write-Host "- 重启 Codex 或启动新的 Codex 会话，让它重新加载 config.toml。"
+    }
 }
-Write-Host "- 可选：只有安装了 Codex CLI 且 'codex' 命令可用时，才运行 'codex mcp list' 检查工具是否出现。"
-Write-Host "- Optional: run 'codex mcp list' only if Codex CLI is installed and the 'codex' command is available."

@@ -453,22 +453,33 @@ if missing:
 PY
 
 echo
-echo "修复完成。/ Repair complete."
-echo "后续建议（不是菜单选项，不需要输入数字） / Next steps (not a menu; do not type the numbers):"
 PLATFORM_NAME="${CODEX_PLUGIN_REPAIR_PLATFORM:-$(uname -s)}"
-case "$PLATFORM_NAME" in
-  Darwin)
-    echo "- 如果 Codex Desktop 正在运行，请重启一次以重新加载 config.toml。"
-    echo "- If Codex Desktop is open, restart it once so it reloads config.toml."
-    ;;
-  Linux)
-    echo "- 请启动新的 Codex CLI 会话以重新加载 config.toml。"
-    echo "- Start a new Codex CLI session so it reloads config.toml."
-    ;;
-  *)
-    echo "- 请重启 Codex 或启动新的 Codex 会话以重新加载 config.toml。"
-    echo "- Restart Codex or start a new Codex session so it reloads config.toml."
-    ;;
-esac
-echo "- 可选：只有安装了 Codex CLI 且 'codex' 命令可用时，才运行 'codex mcp list' 检查工具是否出现。"
-echo "- Optional: run 'codex mcp list' only if Codex CLI is installed and the 'codex' command is available."
+if [[ "$LANGUAGE" == "en-US" ]]; then
+  echo "Repair complete."
+  echo "Next step:"
+  case "$PLATFORM_NAME" in
+    Darwin)
+      echo "- Restart Codex Desktop so it reloads config.toml."
+      ;;
+    Linux)
+      echo "- Start a new Codex CLI session so it reloads config.toml."
+      ;;
+    *)
+      echo "- Restart Codex or start a new Codex session so it reloads config.toml."
+      ;;
+  esac
+else
+  echo "修复完成。"
+  echo "后续建议："
+  case "$PLATFORM_NAME" in
+    Darwin)
+      echo "- 重启 Codex Desktop，让它重新加载 config.toml。"
+      ;;
+    Linux)
+      echo "- 启动新的 Codex CLI 会话，让它重新加载 config.toml。"
+      ;;
+    *)
+      echo "- 重启 Codex 或启动新的 Codex 会话，让它重新加载 config.toml。"
+      ;;
+  esac
+fi

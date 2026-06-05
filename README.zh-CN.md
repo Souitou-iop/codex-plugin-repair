@@ -14,7 +14,7 @@
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.9/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 执行后完全退出并重新打开 Codex Desktop。
@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.9/scr
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.9/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.10/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -100,14 +100,6 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 - 删除当前有效的 `config.toml`
 
 ## 怎么验证
-
-可选的 Codex CLI 检查。如果没有安装 Codex CLI，或者终端里没有 `codex` 命令，请跳过这一步：
-
-```bash
-codex mcp list
-```
-
-在 CLI 可用的环境里，如果 Computer Use 已启用，应能看到 `computer-use`。
 
 macOS Chrome native host：
 
