@@ -22,6 +22,20 @@ jobs:
       - name: Syntax check
         run: bash -n scripts/fix-codex-plugins.sh
 
+      - name: Verify cancel path
+        shell: bash
+        run: |
+          set -euo pipefail
+          cancel_home="$RUNNER_TEMP/codex-home-cancel"
+          mkdir -p "$cancel_home"
+          printf 'service_tier = "default"\n' > "$cancel_home/config.toml"
+          printf '1\nno\n' | CODEX_HOME="$cancel_home" ./scripts/fix-codex-plugins.sh > "$RUNNER_TEMP/cancel-output.txt"
+          grep -q '已取消，未做任何修改。' "$RUNNER_TEMP/cancel-output.txt"
+          grep -q 'service_tier = "default"' "$cancel_home/config.toml"
+          if compgen -G "$cancel_home/config.toml.bak-plugin-repair-*" > /dev/null; then
+            exit 1
+          fi
+
       - name: Build mock Codex home
         shell: bash
         run: |
@@ -60,6 +74,8 @@ jobs:
         env:
           CODEX_PLUGIN_REPAIR_PLATFORM: ${{ matrix.platform }}
           CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
+          CODEX_PLUGIN_REPAIR_LANGUAGE: zh-CN
+          CODEX_PLUGIN_REPAIR_YES: "1"
         run: |
           set -euo pipefail
           ./scripts/fix-codex-plugins.sh 2>&1 | tee "$RUNNER_TEMP/repair-output.txt"
@@ -70,7 +86,7 @@ jobs:
           set -euo pipefail
           test -f "$CODEX_HOME/config.toml"
           grep -q 'service_tier = "fast"' "$CODEX_HOME/config.toml"
-          grep -q '\[1/5\] 检查 Codex 配置 / Checking Codex config...' "$RUNNER_TEMP/repair-output.txt"
+          grep -q '\[1/5\] 检查 Codex 配置...' "$RUNNER_TEMP/repair-output.txt"
           grep -q '插件覆盖报告 / Plugin coverage report:' "$RUNNER_TEMP/repair-output.txt"
           grep -q '修复完成。/ Repair complete.' "$RUNNER_TEMP/repair-output.txt"
           grep -q '下一步 / Next steps:' "$RUNNER_TEMP/repair-output.txt"
@@ -95,7 +111,7 @@ jobs:
           [plugins."empty-plugin@openai-unknown"]
           enabled = true
           EOF
-          if CODEX_HOME="$fail_home" CODEX_PLUGIN_REPAIR_PLATFORM="Linux" ./scripts/fix-codex-plugins.sh > "$RUNNER_TEMP/failure-output.txt" 2>&1; then
+          if CODEX_HOME="$fail_home" CODEX_PLUGIN_REPAIR_PLATFORM="Linux" CODEX_PLUGIN_REPAIR_LANGUAGE="zh-CN" CODEX_PLUGIN_REPAIR_YES="1" ./scripts/fix-codex-plugins.sh > "$RUNNER_TEMP/failure-output.txt" 2>&1; then
             cat "$RUNNER_TEMP/failure-output.txt"
             exit 1
           fi
@@ -145,6 +161,10 @@ jobs:
             "{`"name`":`"$plugin`",`"version`":`"1.0.0`"}" | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
           }
 
+          $existingBundled = Join-Path $CodexHome ".tmp/bundled-marketplaces/openai-bundled/plugins/chrome/.codex-plugin"
+          New-Item -ItemType Directory -Path $existingBundled -Force | Out-Null
+          '{"name":"chrome","version":"0.0.1"}' | Set-Content -LiteralPath (Join-Path $existingBundled "plugin.json") -NoNewline
+
           New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/browser/scripts") -Force | Out-Null
           "" | Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/browser/scripts/browser-client.mjs") -NoNewline
           New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "appx-bundled/plugins/chrome/scripts") -Force | Out-Null
@@ -178,6 +198,8 @@ jobs:
           CODEX_PLUGIN_REPAIR_PLATFORM: Windows
           CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT: ${{ runner.temp }}/appx-bundled
           CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
+          CODEX_PLUGIN_REPAIR_LANGUAGE: zh-CN
+          CODEX_PLUGIN_REPAIR_YES: "1"
         run: |
           $outputPath = Join-Path $env:RUNNER_TEMP "repair-output.txt"
           Start-Transcript -Path $outputPath -Force | Out-Null
@@ -193,7 +215,7 @@ jobs:
           $config = Get-Content -LiteralPath (Join-Path $env:CODEX_HOME "config.toml") -Raw
           $output = Get-Content -LiteralPath (Join-Path $env:RUNNER_TEMP "repair-output.txt") -Raw
           if ($config -notmatch 'service_tier = "fast"') { exit 1 }
-          if ($output -notmatch '\[1/5\] 检查 Codex 配置 / Checking Codex config...') { exit 1 }
+          if ($output -notmatch '\[1/5\] 检查 Codex 配置...') { exit 1 }
           if ($output -notmatch '插件覆盖报告 / Plugin coverage report:') { exit 1 }
           if ($output -notmatch '修复完成。/ Repair complete.') { exit 1 }
           if ($output -notmatch '下一步 / Next steps:') { exit 1 }
@@ -213,6 +235,8 @@ jobs:
           if ($config -notmatch $escapedHelper) { exit 1 }
           $backupCaches = @(Get-ChildItem -LiteralPath (Join-Path $env:CODEX_HOME "plugins/cache/openai-bundled/computer-use") -Directory -Filter "*.bak-plugin-repair-*")
           if ($backupCaches.Count -lt 1) { exit 1 }
+          $bundledBackups = @(Get-ChildItem -LiteralPath (Join-Path $env:CODEX_HOME ".tmp/bundled-marketplaces") -Directory -Filter "openai-bundled.bak-plugin-repair-*")
+          if ($bundledBackups.Count -lt 1) { exit 1 }
           if ($config -match "bak-plugin-repair") { exit 1 }
           $curated = Join-Path $env:CODEX_HOME "plugins/cache/openai-curated/codex-security/2.0.0"
           if (-not (Test-Path -LiteralPath $curated -PathType Container)) { exit 1 }
@@ -231,6 +255,8 @@ jobs:
           $outputPath = Join-Path $env:RUNNER_TEMP "failure-output.txt"
           $env:CODEX_HOME = $failHome
           $env:CODEX_PLUGIN_REPAIR_PLATFORM = "Linux"
+          $env:CODEX_PLUGIN_REPAIR_LANGUAGE = "zh-CN"
+          $env:CODEX_PLUGIN_REPAIR_YES = "1"
           pwsh -NoProfile -File ./scripts/Fix-CodexPlugins.ps1 > $outputPath 2>&1
           if ($LASTEXITCODE -eq 0) {
             Get-Content -LiteralPath $outputPath

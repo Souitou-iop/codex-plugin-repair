@@ -9,12 +9,12 @@
 
 ## 快速修复
 
-急用时直接执行下面的一行命令。脚本会在终端显示中英文步骤指引，先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache。执行完成或遇到问题时，会给出清晰的下一步操作。
+急用时直接执行下面的一行命令。脚本会先让你选择中文或英文，再说明将执行哪些操作；只有输入 `yes` 确认后才会开始修复。执行时会显示步骤指引，先备份 `~/.codex/config.toml`，再修复本地插件配置和 cache；完成或遇到问题时，会给出清晰的下一步操作。
 
 ### Windows PowerShell
 
 ```powershell
-irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.6/scripts/Fix-CodexPlugins.ps1 | iex
+irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.7/scripts/Fix-CodexPlugins.ps1 | iex
 ```
 
 执行后完全退出并重新打开 Codex Desktop。
@@ -22,7 +22,7 @@ irm https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.6/scr
 ### macOS / Linux
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.6/scripts/fix-codex-plugins.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Souitou-iop/codex-plugin-repair/v0.3.7/scripts/fix-codex-plugins.sh)
 ```
 
 macOS 执行后重启 Codex Desktop。Linux 执行后启动新的 Codex CLI 会话。
@@ -96,6 +96,7 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 - 修改浏览器 Profile
 - 强行安装浏览器扩展
 - 启用随机插件
+- 自动关闭应用或结束进程
 - 删除当前有效的 `config.toml`
 
 ## 怎么验证

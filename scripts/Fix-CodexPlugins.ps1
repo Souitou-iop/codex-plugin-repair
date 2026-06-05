@@ -1,23 +1,90 @@
 param(
     [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }),
     [string]$PackageName = "OpenAI.Codex",
-    [string]$BundledSourceRoot = $(if ($env:CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT) { $env:CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT } else { "" })
+    [string]$BundledSourceRoot = $(if ($env:CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT) { $env:CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT } else { "" }),
+    [string]$Language = $(if ($env:CODEX_PLUGIN_REPAIR_LANGUAGE) { $env:CODEX_PLUGIN_REPAIR_LANGUAGE } else { "" }),
+    [switch]$Yes
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($env:CODEX_PLUGIN_REPAIR_YES -eq "1") {
+    $Yes = $true
+}
 
 $Config = Join-Path $CodexHome "config.toml"
 $Stamp = Get-Date -Format "yyyyMMddHHmmss"
 $Backup = "$Config.bak-plugin-repair-$Stamp"
 $Log = Join-Path $CodexHome "codex-plugin-repair-diagnostics-$Stamp.log"
 
-Write-Host "Codex 插件修复脚本 / Codex Plugin Repair"
-Write-Host "将检查 config.toml、插件市场和插件缓存，并在需要时修复。"
-Write-Host "It will check config.toml, marketplaces, and plugin cache, then repair what it can."
-Write-Host "脚本会先备份配置文件，不会删除浏览器数据或当前有效配置。"
-Write-Host "The script backs up config first and does not delete browser data or the active config."
+function Get-SelectedLanguage {
+    param([string]$RequestedLanguage)
+
+    if ($RequestedLanguage -match '^(zh|zh-CN|cn|1)$') { return "zh-CN" }
+    if ($RequestedLanguage -match '^(en|en-US|2)$') { return "en-US" }
+
+    Write-Host "请选择语言 / Choose language:"
+    Write-Host "1. 简体中文"
+    Write-Host "2. English"
+    $Choice = Read-Host "请输入 1 或 2，然后按 Enter / Enter 1 or 2, then press Enter"
+    if ($Choice -eq "2") { return "en-US" }
+    return "zh-CN"
+}
+
+function Confirm-Execution {
+    param(
+        [string]$SelectedLanguage,
+        [bool]$SkipPrompt
+    )
+
+    if ($SelectedLanguage -eq "en-US") {
+        Write-Host "Codex Plugin Repair"
+        Write-Host "This script will:"
+        Write-Host "1. Check your Codex config file."
+        Write-Host "2. Back up config.toml before changing anything."
+        Write-Host "3. Repair known marketplace entries and service_tier when needed."
+        Write-Host "4. Repair cache for plugins that are already enabled."
+        Write-Host "5. On Windows/macOS, enable Browser, Chrome, and Computer Use bundled plugins."
+        Write-Host "6. On Windows, rebuild bundled marketplace/cache and update the Computer Use notify helper path when possible."
+        Write-Host "It will not delete browser data, browser profiles, or the active config.toml."
+        Write-Host "It will not close apps or terminate processes automatically. If files are locked, it will ask you to close Codex Desktop and retry."
+        Write-Host ""
+        if ($SkipPrompt) { return }
+        $Answer = Read-Host "Type yes to continue, or no to exit"
+    } else {
+        Write-Host "Codex 插件修复脚本"
+        Write-Host "这个脚本将执行以下操作："
+        Write-Host "1. 检查 Codex 配置文件。"
+        Write-Host "2. 修改前先备份 config.toml。"
+        Write-Host "3. 按需修复已知 marketplace 配置和 service_tier。"
+        Write-Host "4. 修复当前已经启用插件的缓存。"
+        Write-Host "5. 在 Windows/macOS 上启用 Browser、Chrome、Computer Use bundled 插件。"
+        Write-Host "6. 在 Windows 上尽量重建 bundled marketplace/cache，并修正 Computer Use notify helper 路径。"
+        Write-Host "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
+        Write-Host "脚本不会自动关闭应用或结束进程；如果文件被占用，会提示你关闭 Codex Desktop 后重试。"
+        Write-Host ""
+        if ($SkipPrompt) { return }
+        $Answer = Read-Host "输入 yes 继续执行，输入 no 退出"
+    }
+
+    if ($Answer -ne "yes") {
+        if ($SelectedLanguage -eq "en-US") {
+            Write-Host "Cancelled. No changes were made."
+        } else {
+            Write-Host "已取消，未做任何修改。"
+        }
+        exit 0
+    }
+}
+
+$SelectedLanguage = Get-SelectedLanguage -RequestedLanguage $Language
+Confirm-Execution -SelectedLanguage $SelectedLanguage -SkipPrompt ([bool]$Yes)
 Write-Host ""
-Write-Host "[1/5] 检查 Codex 配置 / Checking Codex config..."
+if ($SelectedLanguage -eq "en-US") {
+    Write-Host "[1/5] Checking Codex config..."
+} else {
+    Write-Host "[1/5] 检查 Codex 配置..."
+}
 
 function Write-AgentsHelp {
     param([string]$LogPath)
@@ -37,6 +104,30 @@ function Write-MissingConfigLog {
         "config=$Config",
         "error=missing Codex config"
     ) | Set-Content -LiteralPath $LogPath -Encoding UTF8
+}
+
+function Write-FailureLog {
+    param(
+        [string]$ErrorMessage,
+        [string[]]$Advice = @()
+    )
+
+    New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
+    $Lines = @(
+        "Codex Plugin Repair diagnostic log",
+        "Codex 插件修复诊断日志",
+        "timestamp=$Stamp",
+        "codex_home=$CodexHome",
+        "config=$Config",
+        "backup=$Backup",
+        "error=$ErrorMessage"
+    )
+    if ($Advice.Count -gt 0) {
+        $Lines += ""
+        $Lines += "Advice / 建议:"
+        $Lines += $Advice
+    }
+    $Lines | Set-Content -LiteralPath $Log -Encoding UTF8
 }
 
 if (-not (Test-Path -LiteralPath $Config -PathType Leaf)) {
@@ -125,7 +216,25 @@ function Sync-WindowsBundledMarketplace {
     New-Item -ItemType Directory -Path $Parent -Force | Out-Null
     if (Test-Path -LiteralPath $Destination) {
         $BackupPath = "$Destination.bak-plugin-repair-$Stamp"
-        Move-Item -LiteralPath $Destination -Destination $BackupPath -Force
+        try {
+            Move-Item -LiteralPath $Destination -Destination $BackupPath -Force -ErrorAction Stop
+        } catch {
+            $Message = $_.Exception.Message
+            $Advice = @(
+                "请完全退出 Codex Desktop，然后重新运行本脚本。",
+                "如果 Chrome/Browser 插件仍在运行，请也关闭相关浏览器插件窗口后重试。",
+                "Fully quit Codex Desktop, then run this script again.",
+                "If the Chrome/Browser plugin helper is still running, close related browser/plugin windows and retry."
+            )
+            Write-FailureLog -ErrorMessage "Could not back up bundled marketplace: $Message" -Advice $Advice
+            [Console]::Error.WriteLine("无法备份 bundled marketplace，目录可能仍被进程占用。")
+            [Console]::Error.WriteLine("Could not back up bundled marketplace; the directory may still be locked by another process.")
+            [Console]::Error.WriteLine("请完全退出 Codex Desktop 后重新运行脚本。")
+            [Console]::Error.WriteLine("Fully quit Codex Desktop, then run this script again.")
+            [Console]::Error.WriteLine("原始错误 / Original error: $Message")
+            Write-AgentsHelp -LogPath $Log
+            exit 3
+        }
         Write-Host "已备份 bundled marketplace / Backed up bundled marketplace to: $BackupPath"
     }
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
@@ -343,7 +452,23 @@ function Copy-Plugin {
             Write-Host "缓存已存在 / Cache exists for ${PluginName}@${Marketplace}: $Dest"
         } else {
             $BackupDest = "$Dest.bak-plugin-repair-$Stamp"
-            Move-Item -LiteralPath $Dest -Destination $BackupDest -Force
+            try {
+                Move-Item -LiteralPath $Dest -Destination $BackupDest -Force -ErrorAction Stop
+            } catch {
+                $Message = $_.Exception.Message
+                $Advice = @(
+                    "请完全退出 Codex Desktop，然后重新运行本脚本。",
+                    "如果相关插件窗口仍在运行，请关闭后重试。",
+                    "Fully quit Codex Desktop, then run this script again.",
+                    "If related plugin windows are still running, close them and retry."
+                )
+                Write-FailureLog -ErrorMessage "Could not back up incomplete cache for ${PluginName}@${Marketplace}: $Message" -Advice $Advice
+                [Console]::Error.WriteLine("无法备份残缺缓存，目录可能仍被进程占用。")
+                [Console]::Error.WriteLine("Could not back up incomplete cache; the directory may still be locked by another process.")
+                [Console]::Error.WriteLine("原始错误 / Original error: $Message")
+                Write-AgentsHelp -LogPath $Log
+                exit 3
+            }
             Write-Host "已备份残缺缓存 / Backed up incomplete cache for ${PluginName}@${Marketplace}: $BackupDest"
             Copy-Item -LiteralPath $Source -Destination $Dest -Recurse
             Write-Host "已重建插件缓存 / Rebuilt ${PluginName}@${Marketplace} -> $Dest"

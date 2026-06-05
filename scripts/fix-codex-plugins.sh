@@ -7,13 +7,77 @@ STAMP="$(date +%Y%m%d%H%M%S)"
 BACKUP="$CONFIG.bak-plugin-repair-$STAMP"
 LOG="$CODEX_HOME/codex-plugin-repair-diagnostics-$STAMP.log"
 
-echo "Codex 插件修复脚本 / Codex Plugin Repair"
-echo "将检查 config.toml、插件市场和插件缓存，并在需要时修复。"
-echo "It will check config.toml, marketplaces, and plugin cache, then repair what it can."
-echo "脚本会先备份配置文件，不会删除浏览器数据或当前有效配置。"
-echo "The script backs up config first and does not delete browser data or the active config."
+select_language() {
+  local requested="${CODEX_PLUGIN_REPAIR_LANGUAGE:-}"
+  case "$requested" in
+    zh|zh-CN|cn|1) echo "zh-CN"; return ;;
+    en|en-US|2) echo "en-US"; return ;;
+  esac
+
+  echo "请选择语言 / Choose language:" >&2
+  echo "1. 简体中文" >&2
+  echo "2. English" >&2
+  printf "请输入 1 或 2，然后按 Enter / Enter 1 or 2, then press Enter: " >&2
+  read -r choice
+  if [[ "$choice" == "2" ]]; then
+    echo "en-US"
+  else
+    echo "zh-CN"
+  fi
+}
+
+LANGUAGE="$(select_language)"
+
+confirm_execution() {
+  if [[ "$LANGUAGE" == "en-US" ]]; then
+    echo "Codex Plugin Repair"
+    echo "This script will:"
+    echo "1. Check your Codex config file."
+    echo "2. Back up config.toml before changing anything."
+    echo "3. Repair known marketplace entries and service_tier when needed."
+    echo "4. Repair cache for plugins that are already enabled."
+    echo "5. On macOS, enable Browser, Chrome, and Computer Use bundled plugins."
+    echo "It will not delete browser data, browser profiles, or the active config.toml."
+    echo "It will not close apps or terminate processes automatically. If files are locked, close Codex Desktop and run it again."
+    echo
+    if [[ "${CODEX_PLUGIN_REPAIR_YES:-}" == "1" ]]; then
+      return
+    fi
+    printf "Type yes to continue, or no to exit: "
+  else
+    echo "Codex 插件修复脚本"
+    echo "这个脚本将执行以下操作："
+    echo "1. 检查 Codex 配置文件。"
+    echo "2. 修改前先备份 config.toml。"
+    echo "3. 按需修复已知 marketplace 配置和 service_tier。"
+    echo "4. 修复当前已经启用插件的缓存。"
+    echo "5. 在 macOS 上启用 Browser、Chrome、Computer Use bundled 插件。"
+    echo "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
+    echo "脚本不会自动关闭应用或结束进程；如果文件被占用，请关闭 Codex Desktop 后重新运行。"
+    echo
+    if [[ "${CODEX_PLUGIN_REPAIR_YES:-}" == "1" ]]; then
+      return
+    fi
+    printf "输入 yes 继续执行，输入 no 退出: "
+  fi
+  read -r answer
+  if [[ "$answer" != "yes" ]]; then
+    if [[ "$LANGUAGE" == "en-US" ]]; then
+      echo "Cancelled. No changes were made."
+    else
+      echo "已取消，未做任何修改。"
+    fi
+    exit 0
+  fi
+}
+
+confirm_execution
 echo
-echo "[1/5] 检查 Codex 配置 / Checking Codex config..."
+if [[ "$LANGUAGE" == "en-US" ]]; then
+  echo "[1/5] Checking Codex config..."
+else
+  echo "[1/5] 检查 Codex 配置..."
+fi
 
 print_agents_help() {
   local log_path="$1"
