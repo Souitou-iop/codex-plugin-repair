@@ -243,3 +243,4 @@ jobs:
           Get-Content -LiteralPath $logs[0].FullName
           if ($log -notmatch 'missing=empty-plugin@openai-unknown') { exit 1 }
           if ($log -notmatch 'MISSING empty-plugin@openai-unknown marketplace=false source=false cache=false') { exit 1 }
+          exit 0
