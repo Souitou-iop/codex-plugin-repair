@@ -155,7 +155,13 @@ jobs:
           CODEX_PLUGIN_REPAIR_BUNDLED_SOURCE_ROOT: ${{ runner.temp }}/appx-bundled
           CODEX_PLUGIN_REPAIR_TIMESTAMP: "2026-06-04T00:00:00Z"
         run: |
-          ./scripts/Fix-CodexPlugins.ps1 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "repair-output.txt")
+          $outputPath = Join-Path $env:RUNNER_TEMP "repair-output.txt"
+          Start-Transcript -Path $outputPath -Force | Out-Null
+          try {
+            ./scripts/Fix-CodexPlugins.ps1
+          } finally {
+            Stop-Transcript | Out-Null
+          }
 
       - name: Verify repaired state
         shell: pwsh
