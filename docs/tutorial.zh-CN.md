@@ -47,7 +47,7 @@ Linux 下执行完成后，启动新的 Codex CLI 会话即可。
 ## 4. 在 macOS 下验证 Chrome Native Host
 
 ```bash
-/Applications/Codex.app/Contents/Resources/node \
+/Applications/Codex.app/Contents/Resources/cua_node/bin/node \
   ~/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/check-native-host-manifest.js
 ```
 

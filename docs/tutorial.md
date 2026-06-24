@@ -47,7 +47,7 @@ On Linux, start a new Codex CLI session instead.
 ## 4. Verify Chrome Native Host On macOS
 
 ```bash
-/Applications/Codex.app/Contents/Resources/node \
+/Applications/Codex.app/Contents/Resources/cua_node/bin/node \
   ~/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/check-native-host-manifest.js
 ```
 

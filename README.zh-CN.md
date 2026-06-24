@@ -115,7 +115,7 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 macOS Chrome native host：
 
 ```bash
-/Applications/Codex.app/Contents/Resources/node \
+/Applications/Codex.app/Contents/Resources/cua_node/bin/node \
   ~/.codex/plugins/cache/openai-bundled/chrome/latest/scripts/check-native-host-manifest.js
 ```
 

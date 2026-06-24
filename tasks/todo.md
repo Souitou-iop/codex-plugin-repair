@@ -26,3 +26,9 @@
 - Moved the running Codex Desktop prompt before the repair explanation and confirmation.
 - The close prompt now explains that closing Codex Desktop is recommended, but continuing is allowed if the user restarts Codex Desktop after repair.
 - README one-line commands now use `main` raw links so they automatically fetch the latest script.
+
+## Review v0.3.15 draft
+
+- Fixed macOS Bash process detection so running Codex Desktop is detected by the app binary path instead of `pgrep -x Codex`.
+- Updated macOS Chrome native host verification commands to use `Resources/cua_node/bin/node`, matching the June 24 Codex Desktop layout.
+- Confirmed the June 24 update symptom locally: config still enabled bundled plugins, while cache needed refresh to browser/chrome 26.616.81150 and computer-use 1.0.829.

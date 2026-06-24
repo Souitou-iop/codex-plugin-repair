@@ -230,13 +230,18 @@ maybe_close_codex_desktop() {
 
 process_name_exists() {
   local name="$1"
-  pgrep -x "$name" >/dev/null 2>&1
+  if [[ "$name" == "Codex" ]]; then
+    ps ax -o pid=,comm= | awk '$0 ~ /Codex\.app\/Contents\/MacOS\/Codex$/ { found = 1 } END { exit found ? 0 : 1 }'
+  else
+    pgrep -x "$name" >/dev/null 2>&1
+  fi
 }
 
 find_repair_related_processes() {
   local name
   local pid
-  for name in Codex extension-host codex-computer-use; do
+  ps ax -o pid=,comm= | awk '$0 ~ /Codex\.app\/Contents\/MacOS\/Codex$/ { print $1 " Codex" }'
+  for name in extension-host codex-computer-use; do
     { pgrep -x "$name" 2>/dev/null || true; } | while IFS= read -r pid; do
       if [[ "$pid" != "$$" ]]; then
         printf '%s %s\n' "$pid" "$name"
