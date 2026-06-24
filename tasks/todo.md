@@ -5,6 +5,8 @@
 - [x] Update docs for the optional close prompt.
 - [x] Move the Codex Desktop close prompt before the repair confirmation.
 - [x] Change README one-line commands to track the latest `main` scripts.
+- [x] Diagnose post-update case where previously downloaded plugins still ask to download again.
+- [x] Expand repair targets from enabled-only plugins to configured and already-cached plugins.
 - [ ] Run local checks and publish the next release.
 
 ## Review
@@ -32,3 +34,9 @@
 - Fixed macOS Bash process detection so running Codex Desktop is detected by the app binary path instead of `pgrep -x Codex`.
 - Updated macOS Chrome native host verification commands to use `Resources/cua_node/bin/node`, matching the June 24 Codex Desktop layout.
 - Confirmed the June 24 update symptom locally: config still enabled bundled plugins, while cache needed refresh to browser/chrome 26.616.81150 and computer-use 1.0.829.
+
+## Review v0.3.16 draft
+
+- Found a second June 24 update symptom: plugins that were present in config as disabled or only existed in local cache could still ask to download again.
+- Changed repair scope to refresh configured plugins and already-cached plugins without enabling disabled plugins.
+- Kept the final failure check limited to `enabled=true` plugins so disabled plugins do not fail the run.

@@ -6,6 +6,7 @@ Use this script when Codex Desktop on macOS or Windows shows one or more of thes
 
 - Computer Use disappears after restart
 - Chrome plugin asks to reinstall repeatedly
+- Plugins you downloaded before ask to download again after a Codex update
 - `computer-use` does not appear in `codex mcp list`
 - Chrome native host manifest exists but points at unstable plugin paths
 - bundled plugins are present under `.tmp` but missing from persistent cache
@@ -75,7 +76,7 @@ If Chrome still cannot connect, rerun the Chrome plugin setup flow from Codex De
 
 ## 5. What To Do If It Still Fails
 
-Check the bilingual plugin coverage report at the end of the script output. If an enabled plugin cannot be repaired, it will print a `MISSING` line. The most important fields are:
+Check the bilingual plugin coverage report at the end of the script output. The script tries to refresh configured plugins and plugins already present in the local cache, but it only exits as failed when an enabled plugin cannot be repaired. The most important fields are:
 
 ```text
 插件覆盖报告 / Plugin coverage report:

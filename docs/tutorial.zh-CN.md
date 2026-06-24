@@ -6,6 +6,7 @@
 
 - Computer Use 重启后消失
 - Chrome 插件反复要求重新安装
+- 以前下载过的插件在 Codex 更新后又提示下载
 - `codex mcp list` 看不到 `computer-use`
 - Chrome native host manifest 存在，但指向不稳定的插件路径
 - bundled 插件只在 `.tmp` 里存在，但持久 cache 里缺失
@@ -75,7 +76,7 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 ## 5. 如果仍然失败
 
-看脚本末尾的中英文插件覆盖报告。如果某个已启用插件无法修复，脚本会输出 `MISSING` 行。重点看这些字段：
+看脚本末尾的中英文插件覆盖报告。脚本会尝试刷新已配置插件和本机已经缓存过的插件，但只有某个已启用插件无法修复时，才会输出 `MISSING` 并以失败状态退出。重点看这些字段：
 
 ```text
 插件覆盖报告 / Plugin coverage report:

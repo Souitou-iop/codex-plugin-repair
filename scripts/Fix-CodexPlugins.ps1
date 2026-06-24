@@ -62,15 +62,15 @@ function Confirm-Execution {
         Write-Host "1. Check your Codex config file."
         Write-Host "2. Back up config.toml before changing anything."
         Write-Host "3. Repair known marketplace entries and service_tier when needed."
-        Write-Host "4. Repair cache for plugins that are already enabled."
+        Write-Host "4. Repair cache for plugins already configured or already cached locally."
         if ($PlatformLower -eq "windows") {
             Write-Host "5. On Windows, enable Browser, Chrome, and Computer Use, rebuild bundled marketplace/cache, and update the Computer Use notify helper path when possible."
         } elseif ($PlatformLower -eq "darwin") {
             Write-Host "5. On macOS, enable Browser, Chrome, and Computer Use, repair bundled marketplace/cache, and refresh latest links when possible."
         } elseif ($PlatformLower -eq "linux") {
-            Write-Host "5. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
+            Write-Host "5. On Linux, keep Desktop-only bundled plugins disabled and repair configured/cached CLI plugin cache only."
         } else {
-            Write-Host "5. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
+            Write-Host "5. On this platform, repair configured/cached plugin cache without forcing Desktop-only plugins."
         }
         Write-Host "It will not delete browser data, browser profiles, or the active config.toml."
         Write-Host "If Codex Desktop is running, it will ask whether to close it before repair. It will not terminate processes without your confirmation."
@@ -83,15 +83,15 @@ function Confirm-Execution {
         Write-Host "1. 检查 Codex 配置文件。"
         Write-Host "2. 修改前先备份 config.toml。"
         Write-Host "3. 按需修复已知 marketplace 配置和 service_tier。"
-        Write-Host "4. 修复当前已经启用插件的缓存。"
+        Write-Host "4. 修复已配置或本机已有缓存的插件缓存。"
         if ($PlatformLower -eq "windows") {
             Write-Host "5. 在 Windows 上启用 Browser、Chrome、Computer Use，尽量重建 bundled marketplace/cache，并修正 Computer Use notify helper 路径。"
         } elseif ($PlatformLower -eq "darwin") {
             Write-Host "5. 在 macOS 上启用 Browser、Chrome、Computer Use，尽量修复 bundled marketplace/cache，并刷新 latest 链接。"
         } elseif ($PlatformLower -eq "linux") {
-            Write-Host "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
+            Write-Host "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已配置/已缓存的 CLI 插件缓存。"
         } else {
-            Write-Host "5. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
+            Write-Host "5. 在当前平台不强行启用 Desktop 专属插件，只修复已配置/已缓存插件缓存。"
         }
         Write-Host "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
         Write-Host "如果检测到 Codex Desktop 正在运行，会询问是否先关闭它；未经确认不会结束进程。"
@@ -611,15 +611,19 @@ function Copy-Plugin {
 
     $CurrentText = Get-Content -LiteralPath $Config -Raw
     $DefaultSource = if ($KnownMarketplaces.ContainsKey($Marketplace)) { $KnownMarketplaces[$Marketplace] } else { "" }
+    $DestBase = Join-Path $CodexHome "plugins/cache/$Marketplace/$PluginName"
+    $Existing = Get-CachedPluginDirs -Base $DestBase -PluginName $PluginName -PlatformName $SystemName
     $SourceMarket = Get-MarketplaceSource -Text $CurrentText -Name $Marketplace -Default $DefaultSource
     if (-not $SourceMarket) {
+        if ($Existing.Count -gt 0) {
+            Write-Host "缓存已有效 / Cache already valid for ${PluginName}@${Marketplace}: $($Existing[-1].FullName)"
+            return $true
+        }
         Write-Host "跳过 ${PluginName}@${Marketplace}：marketplace 源未知 / Skip ${PluginName}@${Marketplace}: marketplace source is unknown"
         return $false
     }
 
     $Source = Join-Path $SourceMarket "plugins/$PluginName"
-    $DestBase = Join-Path $CodexHome "plugins/cache/$Marketplace/$PluginName"
-    $Existing = Get-CachedPluginDirs -Base $DestBase -PluginName $PluginName -PlatformName $SystemName
 
     if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
         if ($Existing.Count -gt 0) {
@@ -696,6 +700,49 @@ function Get-EnabledPlugins {
             }
         }
     }
+}
+
+function Get-CachedPluginTargets {
+    $CacheRoot = Join-Path $CodexHome "plugins/cache"
+    if (-not (Test-Path -LiteralPath $CacheRoot -PathType Container)) {
+        return @()
+    }
+
+    $Targets = [System.Collections.Generic.List[object]]::new()
+    foreach ($MarketDir in Get-ChildItem -LiteralPath $CacheRoot -Directory | Sort-Object FullName) {
+        foreach ($PluginDir in Get-ChildItem -LiteralPath $MarketDir.FullName -Directory | Sort-Object FullName) {
+            $Targets.Add([pscustomobject]@{
+                Name = $PluginDir.Name
+                Marketplace = $MarketDir.Name
+            })
+        }
+    }
+    return @($Targets)
+}
+
+function Get-RepairTargets {
+    param([string]$Text)
+
+    $Seen = @{}
+    $Targets = [System.Collections.Generic.List[object]]::new()
+    foreach ($Plugin in Get-PluginTables $Text) {
+        $Key = "$($Plugin.Marketplace)/$($Plugin.Name)"
+        if (-not $Seen.ContainsKey($Key)) {
+            $Seen[$Key] = $true
+            $Targets.Add([pscustomobject]@{
+                Name = $Plugin.Name
+                Marketplace = $Plugin.Marketplace
+            })
+        }
+    }
+    foreach ($Plugin in Get-CachedPluginTargets) {
+        $Key = "$($Plugin.Marketplace)/$($Plugin.Name)"
+        if (-not $Seen.ContainsKey($Key)) {
+            $Seen[$Key] = $true
+            $Targets.Add($Plugin)
+        }
+    }
+    return @($Targets)
 }
 
 function Set-NotifyHelper {
@@ -902,8 +949,8 @@ if ($SystemName -eq "windows" -or $SystemName -eq "darwin") {
 Set-Content -LiteralPath $Config -Value $Text -NoNewline
 
 Write-Host ""
-Write-Host "[5/6] 修复已启用插件缓存 / Repairing enabled plugin cache..."
-foreach ($Plugin in Get-EnabledPlugins (Get-Content -LiteralPath $Config -Raw)) {
+Write-Host "[5/6] 修复已配置和已缓存插件 / Repairing configured and cached plugin cache..."
+foreach ($Plugin in Get-RepairTargets (Get-Content -LiteralPath $Config -Raw)) {
     Copy-Plugin -Marketplace $Plugin.Marketplace -PluginName $Plugin.Name -KnownMarketplaces $KnownMarketplaces | Out-Null
 }
 

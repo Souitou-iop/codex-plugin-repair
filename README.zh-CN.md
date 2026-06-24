@@ -70,7 +70,7 @@ cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
 ```
 
-Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 CLI-only 修复：修复已经启用插件的 marketplace/cache 一致性，不会强行启用 Desktop 专属插件。
+Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 CLI-only 修复：修复已配置或本机已有缓存插件的 marketplace/cache 一致性，不会强行启用 Desktop 专属插件。
 
 ## 什么时候该用
 
@@ -81,7 +81,7 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 - `codex mcp list` 看不到 `computer-use`
 - Chrome native host 指向临时目录或旧插件路径
 - Windows 日志里出现 `helper paths are unavailable` 或 `not_in_bundled_marketplace_plugin_names`
-- `~/.codex/plugins/cache/...` 缺少已启用插件
+- `~/.codex/plugins/cache/...` 缺少已启用插件，或以前下载过的插件更新后又提示下载
 - `~/.codex/config.toml` 缺少 bundled / curated marketplace
 
 不适合这些情况：
@@ -95,9 +95,9 @@ Linux 没有 Codex Desktop + Computer Use 的同款故障模式。脚本只做 C
 
 | 平台 | 行为 |
 | --- | --- |
-| Windows | 启用 `browser` / `chrome` / `computer-use`，从 AppX 源重建 bundled marketplace，重建残缺 cache，刷新 `latest` junction，修正 Computer Use `notify` helper 路径。 |
-| macOS | 启用 `browser` / `chrome` / `computer-use`，修复 bundled / curated marketplace 和持久 cache，刷新 bundled 插件 `latest` 软链接。 |
-| Linux | 不强行启用 Desktop 插件，只修复当前配置里已经 `enabled=true` 的插件 marketplace/cache。 |
+| Windows | 启用 `browser` / `chrome` / `computer-use`，从 AppX 源重建 bundled marketplace，修复已配置/已缓存插件 cache，刷新 `latest` junction，修正 Computer Use `notify` helper 路径。 |
+| macOS | 启用 `browser` / `chrome` / `computer-use`，修复 bundled / curated marketplace 和已配置/已缓存插件的持久 cache，刷新 bundled 插件 `latest` 软链接。 |
+| Linux | 不强行启用 Desktop 插件，只修复已配置或本机已有缓存插件的 marketplace/cache。 |
 
 所有平台都会先提示可能占用插件文件的常见进程，例如 Codex、`extension-host`、`codex-computer-use`。如果检测到 Codex Desktop，脚本会先询问是否关闭；推荐关闭后再执行修复。只有你输入 `y` 或 `yes` 才会尝试关闭。其他插件进程只做预警，不会自动结束。
 
@@ -143,7 +143,7 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 ## 失败时看哪里
 
-脚本末尾会输出中英文插件覆盖报告。你可以用它判断哪些 marketplace 已配置、哪些插件 cache 存在、哪些已启用插件还需要处理：
+脚本末尾会输出中英文插件覆盖报告。你可以用它判断哪些 marketplace 已配置、哪些插件 cache 存在、哪些已启用插件还需要处理。脚本会尝试刷新已配置插件和本机已经缓存过的插件，但只有 `enabled=true` 的插件缺失时才会让脚本失败：
 
 ```text
 插件覆盖报告 / Plugin coverage report:

@@ -54,6 +54,9 @@ jobs:
           [plugins."codex-security@openai-curated"]
           enabled = true
 
+          [plugins."vercel@openai-curated"]
+          enabled = false
+
           [plugins."mystery@openai-unknown"]
           enabled = true
           EOF
@@ -66,13 +69,25 @@ jobs:
 
           mkdir -p "$CODEX_HOME/.tmp/plugins/.agents/plugins"
           printf '{}\n' > "$CODEX_HOME/.tmp/plugins/.agents/plugins/marketplace.json"
-          root="$CODEX_HOME/.tmp/plugins/plugins/codex-security"
-          mkdir -p "$root/.codex-plugin"
-          printf '{"name":"codex-security","version":"2.0.0"}\n' > "$root/.codex-plugin/plugin.json"
+          for spec in codex-security:2.0.0 vercel:3.0.0 build-web-apps:4.0.0; do
+            plugin="${spec%%:*}"
+            version="${spec##*:}"
+            root="$CODEX_HOME/.tmp/plugins/plugins/$plugin"
+            mkdir -p "$root/.codex-plugin"
+            printf '{"name":"%s","version":"%s"}\n' "$plugin" "$version" > "$root/.codex-plugin/plugin.json"
+          done
 
           root="$CODEX_HOME/plugins/cache/openai-unknown/mystery/9.9.9"
           mkdir -p "$root/.codex-plugin"
           printf '{"name":"mystery","version":"9.9.9"}\n' > "$root/.codex-plugin/plugin.json"
+
+          for spec in vercel:2.0.0 build-web-apps:1.0.0; do
+            plugin="${spec%%:*}"
+            version="${spec##*:}"
+            root="$CODEX_HOME/plugins/cache/openai-curated/$plugin/$version"
+            mkdir -p "$root/.codex-plugin"
+            printf '{"name":"%s","version":"%s"}\n' "$plugin" "$version" > "$root/.codex-plugin/plugin.json"
+          done
 
           stale="$CODEX_HOME/plugins/cache/openai-bundled/browser/1.0.0"
           mkdir -p "$stale"
@@ -98,11 +113,15 @@ jobs:
           grep -q 'service_tier = "fast"' "$CODEX_HOME/config.toml"
           grep -q '\[1/6\] 检查正在运行的 Codex/插件进程...' "$RUNNER_TEMP/repair-output.txt"
           grep -q '\[2/6\] 检查 Codex 配置...' "$RUNNER_TEMP/repair-output.txt"
+          grep -q '\[5/6\] 修复已配置和已缓存插件 / Repairing configured and cached plugin cache...' "$RUNNER_TEMP/repair-output.txt"
           grep -q '插件覆盖报告 / Plugin coverage report:' "$RUNNER_TEMP/repair-output.txt"
           grep -q '修复完成。' "$RUNNER_TEMP/repair-output.txt"
           grep -q '后续建议：' "$RUNNER_TEMP/repair-output.txt"
           grep -q 'OK mystery@openai-unknown marketplace=false source=false cache=true' "$RUNNER_TEMP/repair-output.txt"
           test -d "$CODEX_HOME/plugins/cache/openai-curated/codex-security/2.0.0"
+          test -d "$CODEX_HOME/plugins/cache/openai-curated/vercel/3.0.0"
+          test -d "$CODEX_HOME/plugins/cache/openai-curated/build-web-apps/4.0.0"
+          grep -A1 '\[plugins."vercel@openai-curated"\]' "$CODEX_HOME/config.toml" | grep -q 'enabled = false'
           test -d "$CODEX_HOME/plugins/cache/openai-unknown/mystery/9.9.9"
           if [[ "${{ matrix.platform }}" == "Darwin" ]]; then
             for plugin in browser chrome computer-use; do
@@ -185,6 +204,9 @@ jobs:
           [plugins."codex-security@openai-curated"]
           enabled = true
 
+          [plugins."vercel@openai-curated"]
+          enabled = false
+
           [plugins."mystery@openai-unknown"]
           enabled = true
           '@ | Set-Content -LiteralPath (Join-Path $CodexHome "config.toml") -NoNewline
@@ -216,13 +238,28 @@ jobs:
 
           New-Item -ItemType Directory -Path (Join-Path $CodexHome ".tmp/plugins/.agents/plugins") -Force | Out-Null
           "{}" | Set-Content -LiteralPath (Join-Path $CodexHome ".tmp/plugins/.agents/plugins/marketplace.json") -NoNewline
-          $root = Join-Path $CodexHome ".tmp/plugins/plugins/codex-security"
-          New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
-          '{"name":"codex-security","version":"2.0.0"}' | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
+          foreach ($spec in @(
+            @{ Name = "codex-security"; Version = "2.0.0" },
+            @{ Name = "vercel"; Version = "3.0.0" },
+            @{ Name = "build-web-apps"; Version = "4.0.0" }
+          )) {
+            $root = Join-Path $CodexHome ".tmp/plugins/plugins/$($spec.Name)"
+            New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
+            "{`"name`":`"$($spec.Name)`",`"version`":`"$($spec.Version)`"}" | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
+          }
 
           $root = Join-Path $CodexHome "plugins/cache/openai-unknown/mystery/9.9.9"
           New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
           '{"name":"mystery","version":"9.9.9"}' | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
+
+          foreach ($spec in @(
+            @{ Name = "vercel"; Version = "2.0.0" },
+            @{ Name = "build-web-apps"; Version = "1.0.0" }
+          )) {
+            $root = Join-Path $CodexHome "plugins/cache/openai-curated/$($spec.Name)/$($spec.Version)"
+            New-Item -ItemType Directory -Path (Join-Path $root ".codex-plugin") -Force | Out-Null
+            "{`"name`":`"$($spec.Name)`",`"version`":`"$($spec.Version)`"}" | Set-Content -LiteralPath (Join-Path $root ".codex-plugin/plugin.json") -NoNewline
+          }
 
           "CODEX_HOME=$CodexHome" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -251,6 +288,7 @@ jobs:
           if ($config -notmatch 'service_tier = "fast"') { exit 1 }
           if ($output -notmatch '\[1/6\] 检查正在运行的 Codex/插件进程...') { exit 1 }
           if ($output -notmatch '\[2/6\] 检查 Codex 配置...') { exit 1 }
+          if ($output -notmatch '\[5/6\] 修复已配置和已缓存插件 / Repairing configured and cached plugin cache...') { exit 1 }
           if ($output -notmatch '插件覆盖报告 / Plugin coverage report:') { exit 1 }
           if ($output -notmatch '修复完成。') { exit 1 }
           if ($output -notmatch '后续建议：') { exit 1 }
@@ -275,6 +313,11 @@ jobs:
           if ($config -match "bak-plugin-repair") { exit 1 }
           $curated = Join-Path $env:CODEX_HOME "plugins/cache/openai-curated/codex-security/2.0.0"
           if (-not (Test-Path -LiteralPath $curated -PathType Container)) { exit 1 }
+          $vercel = Join-Path $env:CODEX_HOME "plugins/cache/openai-curated/vercel/3.0.0"
+          if (-not (Test-Path -LiteralPath $vercel -PathType Container)) { exit 1 }
+          $buildWebApps = Join-Path $env:CODEX_HOME "plugins/cache/openai-curated/build-web-apps/4.0.0"
+          if (-not (Test-Path -LiteralPath $buildWebApps -PathType Container)) { exit 1 }
+          if ($config -notmatch '\[plugins\."vercel@openai-curated"\]\s+enabled = false') { exit 1 }
           $unknown = Join-Path $env:CODEX_HOME "plugins/cache/openai-unknown/mystery/9.9.9"
           if (-not (Test-Path -LiteralPath $unknown -PathType Container)) { exit 1 }
 

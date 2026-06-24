@@ -70,7 +70,7 @@ cd codex-plugin-repair
 ./scripts/fix-codex-plugins.sh
 ```
 
-Linux does not have the same Codex Desktop + Computer Use failure mode. The script runs in CLI-only mode: it repairs marketplace/cache consistency for plugins that are already enabled, and it does not force-enable Desktop-only plugins.
+Linux does not have the same Codex Desktop + Computer Use failure mode. The script runs in CLI-only mode: it repairs marketplace/cache consistency for plugins that are configured or already cached locally, and it does not force-enable Desktop-only plugins.
 
 ## When To Use It
 
@@ -81,7 +81,7 @@ Use this script when you see symptoms like:
 - `computer-use` is missing from `codex mcp list`
 - Chrome native host points at a temporary or stale plugin path
 - Windows logs contain `helper paths are unavailable` or `not_in_bundled_marketplace_plugin_names`
-- `~/.codex/plugins/cache/...` is missing enabled plugins
+- `~/.codex/plugins/cache/...` is missing enabled plugins, or plugins you downloaded before ask to download again after an update
 - `~/.codex/config.toml` is missing bundled or curated marketplace entries
 
 This script is not meant for:
@@ -95,9 +95,9 @@ This script is not meant for:
 
 | Platform | Behavior |
 | --- | --- |
-| Windows | Enables `browser`, `chrome`, and `computer-use`; rebuilds the bundled marketplace from the AppX source; rebuilds incomplete cache directories; refreshes `latest` junctions; updates the Computer Use `notify` helper path. |
-| macOS | Enables `browser`, `chrome`, and `computer-use`; repairs bundled/curated marketplace entries and persistent cache; refreshes bundled plugin `latest` symlinks. |
-| Linux | Does not force-enable Desktop plugins. It only repairs marketplace/cache state for plugins already marked `enabled=true`. |
+| Windows | Enables `browser`, `chrome`, and `computer-use`; rebuilds the bundled marketplace from the AppX source; repairs cache for configured/already-cached plugins; refreshes `latest` junctions; updates the Computer Use `notify` helper path. |
+| macOS | Enables `browser`, `chrome`, and `computer-use`; repairs bundled/curated marketplace entries and persistent cache for configured/already-cached plugins; refreshes bundled plugin `latest` symlinks. |
+| Linux | Does not force-enable Desktop plugins. It repairs marketplace/cache state for plugins that are configured or already cached locally. |
 
 On every platform, the script warns about common processes that may keep plugin files locked, such as Codex, `extension-host`, and `codex-computer-use`. If Codex Desktop is detected, the script asks whether to close it first; closing it before repair is recommended. It only attempts to close Codex Desktop after you type `y` or `yes`. Other plugin processes are warning-only and are not terminated automatically.
 
@@ -143,7 +143,7 @@ Get-ChildItem -Path $logRoot -Recurse -Filter "codex-desktop-*.log" |
 
 ## If It Still Fails
 
-The script prints a bilingual plugin coverage report. Use it to see which marketplaces are configured, which plugin caches exist, and which enabled plugins still need attention:
+The script prints a bilingual plugin coverage report. Use it to see which marketplaces are configured, which plugin caches exist, and which enabled plugins still need attention. The script tries to refresh configured plugins and plugins already present in the local cache, but it only fails the run when an `enabled=true` plugin is still missing:
 
 ```text
 插件覆盖报告 / Plugin coverage report:

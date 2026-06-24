@@ -36,16 +36,16 @@ confirm_execution() {
     echo "1. Check your Codex config file."
     echo "2. Back up config.toml before changing anything."
     echo "3. Repair known marketplace entries and service_tier when needed."
-    echo "4. Repair cache for plugins that are already enabled."
+    echo "4. Repair cache for plugins already configured or already cached locally."
     case "$SCRIPT_PLATFORM" in
       Darwin)
         echo "5. On macOS, enable Browser, Chrome, and Computer Use, repair bundled marketplace/cache, and refresh latest links when possible."
         ;;
       Linux)
-        echo "5. On Linux, keep Desktop-only bundled plugins disabled and repair already-enabled CLI plugin cache only."
+        echo "5. On Linux, keep Desktop-only bundled plugins disabled and repair configured/cached CLI plugin cache only."
         ;;
       *)
-        echo "5. On this platform, repair already-enabled plugin cache without forcing Desktop-only plugins."
+        echo "5. On this platform, repair configured/cached plugin cache without forcing Desktop-only plugins."
         ;;
     esac
     echo "It will not delete browser data, browser profiles, or the active config.toml."
@@ -61,16 +61,16 @@ confirm_execution() {
     echo "1. 检查 Codex 配置文件。"
     echo "2. 修改前先备份 config.toml。"
     echo "3. 按需修复已知 marketplace 配置和 service_tier。"
-    echo "4. 修复当前已经启用插件的缓存。"
+    echo "4. 修复已配置或本机已有缓存的插件缓存。"
     case "$SCRIPT_PLATFORM" in
       Darwin)
         echo "5. 在 macOS 上启用 Browser、Chrome、Computer Use，尽量修复 bundled marketplace/cache，并刷新 latest 链接。"
         ;;
       Linux)
-        echo "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已启用的 CLI 插件缓存。"
+        echo "5. 在 Linux 上不启用 Desktop 专属 bundled 插件，只修复已配置/已缓存的 CLI 插件缓存。"
         ;;
       *)
-        echo "5. 在当前平台不强行启用 Desktop 专属插件，只修复已启用插件缓存。"
+        echo "5. 在当前平台不强行启用 Desktop 专属插件，只修复已配置/已缓存插件缓存。"
         ;;
     esac
     echo "脚本不会删除浏览器数据、浏览器 Profile，也不会删除当前有效的 config.toml。"
@@ -404,9 +404,11 @@ def ensure_marketplace(src, name, source):
 def get_marketplace_source(src, name, default):
     m = re.search(rf'^\[marketplaces\.{re.escape(name)}\]\r?\n(.*?)(?=^\[|\Z)', src, re.M | re.S)
     if not m:
-        return pathlib.Path(default)
+        return pathlib.Path(default).expanduser() if default else None
     s = re.search(r'^source\s*=\s*"([^"]+)"', m.group(1), re.M)
-    return pathlib.Path(s.group(1)).expanduser() if s else pathlib.Path(default)
+    if s:
+        return pathlib.Path(s.group(1)).expanduser()
+    return pathlib.Path(default).expanduser() if default else None
 
 # Current Codex CLI rejects service_tier = "default"; this can prevent all plugin config from loading.
 text = re.sub(r'^service_tier\s*=\s*"default"\s*$', 'service_tier = "fast"', text, flags=re.M)
@@ -484,7 +486,7 @@ def plugin_coverage_report_lines(cfg):
     for market in all_markets:
         source = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
         has_table = market in markets
-        has_source = bool(str(source)) and source.exists()
+        has_source = bool(source) and source.exists()
         has_cache = market in cache_markets
         label = "KNOWN" if market in known_marketplaces or has_table else "UNKNOWN"
         lines.append(f"{label} {market} table={yn(has_table)} source={yn(has_source)} cache={yn(has_cache)}")
@@ -495,7 +497,7 @@ def plugin_coverage_report_lines(cfg):
             continue
         cache = codex_home / "plugins" / "cache" / market / name
         source_market = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
-        source = source_market / "plugins" / name if str(source_market) else None
+        source = source_market / "plugins" / name if source_market else None
         ok_market = market in markets
         ok_cache = has_plugin_cache(cache, name)
         source_exists = bool(source and source.exists())
@@ -613,14 +615,17 @@ def update_latest_link(dst_base, target):
     print(f"已更新 latest 链接 / Updated latest link: {latest} -> {target}")
 
 def copy_plugin(marketplace, plugin_name):
+    dst_base = codex_home / "plugins" / "cache" / marketplace / plugin_name
+    existing = cached_plugin_dirs(plugin_name, dst_base)
     src_market = get_marketplace_source(config_path.read_text(), marketplace, known_marketplaces.get(marketplace, ""))
-    if not str(src_market):
+    if not src_market:
+        if existing:
+            print(f"缓存已有效 / Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
+            return True
         print(f"跳过 {plugin_name}@{marketplace}：marketplace 源未知 / Skip {plugin_name}@{marketplace}: marketplace source is unknown")
         return False
 
     src = src_market / "plugins" / plugin_name
-    dst_base = codex_home / "plugins" / "cache" / marketplace / plugin_name
-    existing = cached_plugin_dirs(plugin_name, dst_base)
     if not src.exists():
         if existing:
             print(f"缓存已有效 / Cache already valid for {plugin_name}@{marketplace}: {existing[-1]}")
@@ -679,9 +684,34 @@ def enabled_plugins(src):
         if re.search(r'^enabled\s*=\s*true\s*$', body, re.M):
             yield name, market
 
-# Repair every already-enabled plugin that can be resolved from its marketplace.
-print("\n[5/6] 修复已启用插件缓存 / Repairing enabled plugin cache...")
-for name, market in enabled_plugins(config_path.read_text()):
+def configured_plugins(src):
+    for name, market, _enabled in plugin_tables(src):
+        yield name, market
+
+def cached_plugins():
+    cache_root = codex_home / "plugins" / "cache"
+    if not cache_root.exists():
+        return
+    for market_dir in sorted(p for p in cache_root.iterdir() if p.is_dir()):
+        for plugin_dir in sorted(p for p in market_dir.iterdir() if p.is_dir()):
+            yield plugin_dir.name, market_dir.name
+
+def repair_targets(src):
+    seen = set()
+    for name, market in configured_plugins(src):
+        key = (name, market)
+        if key not in seen:
+            seen.add(key)
+            yield key
+    for name, market in cached_plugins() or ():
+        key = (name, market)
+        if key not in seen:
+            seen.add(key)
+            yield key
+
+# Repair configured plugins and plugins that were already present in the local cache.
+print("\n[5/6] 修复已配置和已缓存插件 / Repairing configured and cached plugin cache...")
+for name, market in repair_targets(config_path.read_text()):
     copy_plugin(market, name)
 
 cfg = config_path.read_text()
@@ -697,7 +727,7 @@ for m in re.finditer(r'^\[plugins\."([^@"]+)@([^"]+)"\]\r?\n(.*?)(?=^\[|\Z)', cf
     ok_market = market in markets
     ok_cache = has_plugin_cache(cache, name)
     src_market = get_marketplace_source(cfg, market, known_marketplaces.get(market, ""))
-    src = src_market / "plugins" / name if str(src_market) else None
+    src = src_market / "plugins" / name if src_market else None
     source_exists = bool(src and src.exists())
     status = "OK" if ok_cache else "MISSING"
     if status != "OK":
